@@ -1,9 +1,12 @@
 PREDEF:
+  - chap00-preface.re
+  - chap00-preface.re
 
 CHAPS:
-  - grouscope-books.re
+  - chap01-starter.re
+  - chap02-faq.re
 
 APPENDIX:
 
 POSTDEF:
-
+  - chap99-postscript.re

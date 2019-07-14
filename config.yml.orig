@@ -15,27 +15,19 @@ review_version: 2.0
 # その値がB.ymlよりも優先される。
 # 同様にA.yml、B.yml内でさらにinherit:パラメータを使うこともできる。
 # inherit: ["A.yml", "B.yml"]
-inherit: ["config-starter.yml"]
 
 # ブック名(ファイル名になるもの。ASCII範囲の文字を使用)
-bookname: mybook
+bookname: book
 # 記述言語。省略した場合はja
 language: ja
 
 # 書名
 # 読みを入れる例 booktitle: {name: "Re:VIEW EPUBサンプル", file-as: "リビューイーパブサンプル"}
-# （タイトルやサブタイトルが長い場合は、好みの箇所に改行を入れてください。）
-booktitle: |-
-  aaa
-  bbbb
-subtitle: |-
-  ccccc
+booktitle: Re:VIEWサンプル書籍
 
 # 著者名。「, 」で区切って複数指定できる
 # 読みを入れる例 aut: [{name: "青木峰郎", file-as: "アオキミネロウ"}, {name: "武藤健志", file-as: "ムトウケンシ"}, {name: "高橋征義", file-as: "タカハシマサヨシ"}, {name: "角征典", file-as: "カドマサノリ"}]
-aut:
-  - name:    aaa
-    file-as: aaa
+aut: ["青木峰郎", "武藤健志", "高橋征義", "角征典"]
 
 # 以下はオプション
 # 以下はオプション(autと同じように配列書式で複数指定可能)。
@@ -66,7 +58,6 @@ aut:
 # a-pht, pht: 撮影責任者
 # a-pbl, pbl: 出版社（発行所）
 # a-prt, prt: 印刷所
-prt: ○○印刷所
 # a-red, red: 項目の枠組起草者
 # a-rev, rev: 評論者
 # a-spn, spn: 援助者
@@ -75,16 +66,14 @@ prt: ○○印刷所
 # a-trl, trl: 翻訳者
 
 # 刊行日(省略した場合は実行時の日付)
-date: 2019-08-09
+date: 2018-02-17
 # 発行年月。YYYY-MM-DD形式による配列指定。省略した場合はdateを使用する
 # 複数指定する場合は次のように記述する
 # [["初版第1刷の日付", "初版第2刷の日付"], ["第2版第1刷の日付"]]
 # 日付の後ろを空白文字で区切り、任意の文字列を置くことも可能。
-history: [["2019-08-09 ver 1.0"]]
-# [experimental] 新刊を頒布したイベント名（例：「技術書典6（2019年春）新刊」）
-pubevent_name: コミケ96（2019年夏）新刊
+history: [["2018-02-17"]]
 # 権利表記(配列で複数指定可)
-rights: (C) 2019 aaa
+# rights: (C) 2016 Re:VIEW Developers
 # description: 説明
 # subject: 短い説明用タグ(配列で複数指定可)
 # type: 書籍のカテゴリーなど(配列で複数指定可)
@@ -94,7 +83,7 @@ rights: (C) 2019 aaa
 # coverage: 内容の範囲や領域(配列で複数指定可)
 
 # デバッグフラグ。nullでないときには一時ファイルをカレントディレクトリに作成し、削除もしない
-debug: true
+debug: null
 
 # 固有IDに使用するドメイン。指定しない場合には、時刻に基づくランダムUUIDが入る
 # urnid: urn:uid:http://example.com/book-title/
@@ -115,13 +104,12 @@ stylesheet: ["style.css"]
 # htmlversion: 4
 
 # 目次として抽出する見出しレベル
-toclevel: 3               # （部と）章と節と小節を目次に載せる
+toclevel: 3
 
 # 採番の設定。採番させたくない見出しには「==[nonum]」のようにnonum指定をする
 #
 # 本文でセクション番号を表示する見出しレベル
-#secnolevel: 2             # 章 (chapter) と節 (section) にだけ番号をつける
-secnolevel: 3              # 小節 (subsection) にも番号をつける
+secnolevel: 2
 
 # 以下のsecnolevelはまだ未実装。
 # 前付でセクション番号を表示する見出しレベル(未実装)
@@ -134,7 +122,7 @@ secnolevel: 3              # 小節 (subsection) にも番号をつける
 # part_secnolevel: 1
 
 # 本文中に目次ページを作成するか。省略した場合はnull (作成しない)
-toc: true
+# toc: true
 
 # EPUB2標準の目次(NCX)以外に物理目次ファイルを作成するか。省略した場合はnull (作成しない)
 # ePUB3においてはこの設定によらず必ず作成される
@@ -147,7 +135,7 @@ toc: true
 coverimage: cover.jpg
 #
 # 表紙の後に大扉ページを作成するか。省略した場合はtrue (作成する)
-titlepage: true
+# titlepage: true
 #
 # 自動生成される大扉ページを上書きするファイル。ファイル名を指定すると大扉として入る (PDFMaker向けにはLaTeXソース断片、EPUBMaker向けにはHTMLファイル)
 # titlefile: null
@@ -288,31 +276,22 @@ epubmaker:
   # epubmaker:階層を使うものはここまで
 
 # LaTeX用のスタイルファイル(styディレクトリ以下に置くこと)
-texstyle: [reviewmacro, starter, mystyle, mytitlepage, mycolophon]
+texstyle: reviewmacro
 #
 # LaTeX用のdocumentclassを指定する
 # texdocumentclass: ["jsbook", "uplatex,oneside"]
-texdocumentclass: ["jsbook",
-    #"uplatex,papersize,twoside,b5j,10pt,openright" # B5 10pt 右起こし
-    #"uplatex,papersize,twoside,b5j,10pt,openany"   # B5 10pt 両起こし
-    #"uplatex,papersize,twoside,a5j,9pt,openright"  # A5  9pt 右起こし
-    #"uplatex,papersize,twoside,a5j,9pt,openany"    # A5  9pt 両起こし
-    #"uplatex,papersize,oneside,a5j,10pt,openany"   # A5 10pt 両起こし（タブレット向け）
-    "uplatex,papersize,twoside,b5j,10pt,openright"
-]
 #
 # LaTeX用のコマンドを指定する
 # texcommand: "uplatex"
 #
 # LaTeXのコマンドに渡すオプションを指定する
 # texoptions: null
-texoptions: "-halt-on-error -file-line-error"  # エラー時にインタラクティブモードにしない、エラー箇所はファイル名つきで表示
 #
 # LaTeX用のdvi変換コマンドを指定する(dvipdfmx)
 # dvicommand: "dvipdfmx"
 #
 # LaTeX用のdvi変換コマンドのオプションを指定する
-dvioptions: "-d 5 -z 3"  # -z 9 だと画像を最大圧縮する（ただし時間がかかる）
+# dvioptions: "-d 5"
 
 # 以下のパラメータを有効にするときには、
 # pdfmaker:
@@ -326,7 +305,6 @@ pdfmaker:
   # TeXコンパイル前に実行するプログラム。変換後のTeXソースを調整したいときに使用する。
   # 渡される引数1=作業用展開ディレクトリ、引数2=呼び出しを実行したディレクトリ
   # hook_beforetexcompile: null
-  hook_beforetexcompile: [lib/hooks/beforetexcompile.rb]
   #
   # TeXコンパイル後に実行するプログラム。索引作業をして再度コンパイルしたいときなどに使用する。
   # 渡される引数1=作業用展開ディレクトリ、引数2=呼び出しを実行したディレクトリ
@@ -341,12 +319,5 @@ pdfmaker:
   #
   # 奥付を作成するか。trueを指定するとデフォルトの奥付、ファイル名を指定するとそれがcolophon.htmlとしてコピーされる
   colophon: true
-  #
-  # 表紙に配置し、書籍の影絵にも利用する画像ファイル。同人誌の印刷では一般的に、表紙は本文と別ファイルにするので、ここはnullにする。
-  coverimage: null
-  #
   # pdfmaker:階層を使うものはここまで
 
-## @chapref<>{} や @<hd>{} で、章(Chapter)や節(Section)へのリンクを作成
-## （Re:VIEW の機能だがドキュメントには未記載？）
-chapterlink: true
