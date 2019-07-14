@@ -1,7 +1,14 @@
 PREDEF:
   - chap00-preface.re
+  - chap00-preface-bk.re
 
 CHAPS:
+  - chap01.re
+  - chap02.re
+  - chap03.re
+  - chap04.re
+  - chap05.re
+  - chap06.re
   - chap01-starter.re
   - chap02-faq.re
 
