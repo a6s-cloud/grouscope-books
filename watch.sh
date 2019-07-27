@@ -6,7 +6,6 @@ TAG="latest"
 
 main() {
     local opt="$1"
-    local script_dir=
 
     # このスクリプトがあるディレクトリに移動する
     cd "$( dirname "${BASH_SOURCE[0]}" )"
