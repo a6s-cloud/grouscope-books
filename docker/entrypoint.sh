@@ -56,7 +56,7 @@ main() {
                 echo "============================================================================="
             fi
         fi
-    done < <(inotifywait -m /root/grouscope-books -e create -e move -e delete)
+    done < <(inotifywait -m /root/grouscope-books -e create -e move -e delete -e modify)
 }
 
 main "$@"
