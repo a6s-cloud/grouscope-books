@@ -10,6 +10,7 @@ main() {
     # このスクリプトがあるディレクトリに移動する
     cd "$( dirname "${BASH_SOURCE[0]}" )"
 
+    docker pull ${IMAGE}:${TAG}
     if [[ "$opt" == "-d" ]]; then
         docker run --rm --name grouscope_books \
                 --volume "${PWD}:/root/grouscope-books" -d ${IMAGE}:${TAG}
