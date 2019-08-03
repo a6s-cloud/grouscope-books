@@ -61,7 +61,91 @@ $ docker run hello-world
 //image[chap05/0001_FigureOfImageAndContainer][Docker 環境のリストアイメージ][scale=1.0]
 
 ==== Docker のイメージとコンテナの性質を体験してみる
-TODO:
+Docker イメージとコンテナの違いを実際にコマンドを打って確認してみることにします。以下のようにdocker run コマンドを実行してAlpine Linux を起動します。以下のコマンドはAlpine Linux イメージがない状態から実行していることを想定しています。
+
+//cmd[docker run でAlpine Linux]{
+$ docker run -ti alpine sh
+Unable to find image 'alpine:latest' locally
+latest: Pulling from library/alpine
+050382585609: Pull complete 
+Digest: sha256:6a92cd1fcdc8d8cdec60f33dda4db2cb1fcdcacf3410a8e05b3741f44a9b5998
+Status: Downloaded newer image for alpine:latest
+/ # 
+//}
+
+するとalpine Linux のイメージがpull され、コンテナが起動してシェルのプロンプトが表示されます。Linux に画面とキーボードを直接接続したりSSH でroot ユーザとしてログインしているのと同じような状態です。ここで適当にファイルを作成してみましょう。以下のコマンドはアプリケーションが/var/log ディレクトリ下にyourapp.log というファイルでログを出力した状態を想定しています。
+
+//cmd{
+/ # echo "An application said. 'Hellow world'" > /var/log/yourapp.log
+/ # ls -l /var/log/yourapp.log
+-rw-r--r--    1 root     root            nn MM DD hh:mm /var/log/yourapp.log
+/ # cat /var/log/yourapp.log
+An application said. 'Hellow world'
+//}
+
+/var/log/yourapp.log ファイルが作成されました。ここでDocker コンテナのセッションを終了してみましょう。
+
+//cmd{
+/ # exit
+//}
+
+するとDocker ホスト側にプロンプトが戻ります。この状態でイメージとコンテナの状態を確認してみます。
+
+//cmd{
+$ # イメージの確認
+$ docker images
+REPOSITORY                 TAG                 IMAGE ID            CREATED             SIZE
+alpine                     latest              b7b28af77ffe        3 weeks ago         5.58MB
+$ # コンテナの確認
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS                     PORTS               NAMES
+c29ef7560eaa        alpine              "sh"                2 hours ago         Exited (0) 2 seconds ago                       vibrant_lumiere
+//}
+
+すると先程pull したイメージと起動したコンテナが表示されます。コンテナ名として"vibrant_lumiere" という名前がつけられていますが、これはコンテナを作成するたびにランダムにつけられる名前となります。このコンテナは"STATUS" の項目を見るとわかるとおり、約2 秒前に停止しているコンテナになります。コンテナはそのコンテナ内で起動しているメインプロセスが停止すると、コンテナ自体も終了する仕組みになっています。そのため先程の例ではdocker run でsh のメインプロセスが起動してログアウトすることでメインプロセスが終了して、コンテナも終了するようになっています。それでは次に、docker start コマンドでこのコンテナをもう一度起動してみましょう。
+
+//cmd{
+$ docker start vibrant_lumiere
+vibrant_lumiere
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+c29ef7560eaa        alpine              "sh"                8 hours ago         Up 3 seconds                            vibrant_lumiere
+//}
+
+docker start を実行すると先程のコンテナでsh プロセスが起動しますので、このsh プロセスにアタッチして先程作成したファイルが残っていることを確認しましょう。
+
+//cmd{
+$ docker attach vibrant_lumiere
+/ # cat /var/log/yourapp.log
+An application said. 'Hellow world'
+//}
+
+ファイルがありました。先程作成したファイルはコンテナ内に残り続けていることがわかります。ここもう一度ログアウトしてコンテナを停止し、次はコンテナを削除してみましょう。
+
+//cmd{
+/ # exit
+$ docker rm vibrant_lumiere
+vibrant_lumiere
+$ docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+//}
+
+コンテナが削除されました。このコンテナの削除をもって状態のリストアは完了です。それではもう一度コンテナをdocker run コマンドから起動してみましょう。
+
+//cmd{
+$ docker run -ti alpine sh
+/ # 
+//}
+
+Alpine Linux のコンテナが起動してsh のセッションに入りました。先程と違う点としては"Pulling from library/alpine" という文言が消えてイメージのpull が行われていない点です。これは一番最初にdocker run コマンドを実行した時にイメージは手元に落とせているため、そのイメージからAlpine Linux を起動したことになります。イメージをダウンロードする必要が無いので先程よりもすばやくコンテナを起動することができます。ここで先程のファイルの存在を確認してみましょう。
+
+//cmd{
+$ docker run -ti alpine sh
+/ # cat /var/log/yourapp.log
+cat: can't open '/var/log/yourapp.log': No such file or directory
+//}
+
+ファイルが無いためエラーとなりました。これは初期のAlpine Linux の状態に戻っているためです。このようにDocker ではコンテナを削除することで状態を元に戻すことができるため低コストで素早く、そしてバックアップを管理する必要もなく状態を元に戻せるようになっています。
 
 =={sec-ext1} Laradock を使ったLaravel 環境の構築
 トキさんがLaradock を提案してくれた。
