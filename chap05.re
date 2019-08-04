@@ -148,8 +148,37 @@ cat: can't open '/var/log/yourapp.log': No such file or directory
 
 ファイルが無いためエラーとなりました。これは初期のAlpine Linux の状態に戻っているためです。このようにDocker ではコンテナを削除することで状態を元に戻すことができるため低コストで素早く、そしてバックアップを管理する必要もなく状態を元に戻せるようになっています。
 
-=={sec-ext1} Laradock を使ったLaravel 環境の構築
-トキさんがLaradock を提案してくれた。
+== Laravel という選択
+閑話休題、Docker を使うことが決まったので次はバックエンドのWeb アプリケーションフレームワークを決める話題になりました。その時トキさんが「Laravel 使いたい！」と提案してくれました。普段PHP を使ったことがない私でも聞いたことはあり、当時会議に参加していたメンバも異論無しですんなりと決まりました。
+
+Laravel はPHP で動くフルスタックなフレームワークでルーティングやコントローラ、ビュー、ORM も含んでいて且つAWS のS3 をストレージとして使うことを前提としたオプションも含まれていたりと至れり尽くせりなフレームワークです。今回はそのLaravel をフロントエンドのVue.js で組まれたプログラムにJSON で結果を返すREST 構成にすることに決まりました。もちろんLaravel にはAPI サーバの機能もあるためそのあたりの実装についても簡単に実装できるようになっています。
+
+== Laradock との出会い
+フレームワークとしてLaravel を使うことが決定したので、次はその環境をどのようにしてDocker で準備するかという流れになりました。自力でDockerfile を作成するのも良いですが、私には本業があってその隙間時間に進めていくプロジェクトであったことを考慮して、できるだけそれは回避しようと思っていました。有名なLaravel というフレームワークというのもあり、既に完成度の高いLaravel のDocker イメージを作成して配布している人がいるはずだと考えていました。それをメンバに伝えた所、Docker イメージを探す作業に入っていきました。するとトキさんがまたやらかしてくれました。「Laradock ありますよ！」。
+
+Laradock を使えばLaravel 環境が手軽に自分の手元に準備でき、やはりコミュニティが活発でDockerfile やドキュメントもメンテナンスしっかりできているので、今後使い続けるのにも良い選択でした。LEMP <fn>{chenv_02}構成に加えてRedis、Mongo DB、メールサーバ等のイメージも必要に応じて準備できるようになっており、今後のことも考えると当時選ばない理由はありませんでした。
+//footnote[chenv_02][Linux、Nginx、MySQL、PHP な構成のこと。LAMP のApache がNginx に変わった]
+
+=== Laradock を即席で立ち上げてみる
+Laradock を使うと簡単にLaravel 環境を準備できます。とりあえずLaravel のトップ画面を表示するだけであれば以下のようにコマンドを実行することで用意できます@<fn>{chenv_03}@<fn>{chenv_04}。
+//footnote[chenv_03][mysql コンテナも必要な場合はdocker-compose up コマンドにmysql と引数を追加してください。]
+//footnote[chenv_04]["Do not run Composer as root/super user! See https://getcomposer.org/root for details" といった警告が出るかもしれませんが今回は無視して進むことにします]
+
+//cmd{
+mkdir -p laravel/laravel
+cd laravel
+git clone --depth 1 https://github.com/laradock/laradock.git
+cd laradock
+cp env-example .env
+sed -i -e 's|APP_CODE_PATH_HOST=.*|APP_CODE_PATH_HOST=../laravel|' .env
+docker-compose up -d nginx
+docker-compose exec --user laradock workspace bash -c "cd /var/www && composer create-project laravel/laravel ."
+docker-compose exec php-fpm chown -R www-data:www-data .
+//}
+
+コマンドを実行したら、Web ブラウザを開いてhttp://localhost にアクセスするとLaravel のwelcome page が見れるはずです。
+
+
 
 =={sec-ext1} フロントエンドとバックエンド、バッチプロジェクトの依存性管理
 git submodule を使って複数プログラムの依存性を管理。
