@@ -156,29 +156,52 @@ Laravel はPHP で動くフルスタックなフレームワークでルーテ�
 == Laradock との出会い
 フレームワークとしてLaravel を使うことが決定したので、次はその環境をどのようにしてDocker で準備するかという流れになりました。自力でDockerfile を作成するのも良いですが、私には本業があってその隙間時間に進めていくプロジェクトであったことを考慮して、できるだけそれは回避しようと思っていました。有名なLaravel というフレームワークというのもあり、既に完成度の高いLaravel のDocker イメージを作成して配布している人がいるはずだと考えていました。それをメンバに伝えた所、Docker イメージを探す作業に入っていきました。するとトキさんがまたやらかしてくれました。「Laradock ありますよ！」。
 
-Laradock を使えばLaravel 環境が手軽に自分の手元に準備でき、やはりコミュニティが活発でDockerfile やドキュメントもメンテナンスしっかりできているので、今後使い続けるのにも良い選択でした。LEMP <fn>{chenv_02}構成に加えてRedis、Mongo DB、メールサーバ等のイメージも必要に応じて準備できるようになっており、今後のことも考えると当時選ばない理由はありませんでした。
+Laradock を使えばLaravel 環境が手軽に自分の手元に準備でき、やはりコミュニティが活発でDockerfile やドキュメントもメンテナンスしっかりできているので、今後使い続けるのにも良い選択でした。LEMP @<fn>{chenv_02}構成に加えてRedis、Mongo DB、メールサーバ等のイメージも必要に応じて準備できるようになっており、今後のことも考えると当時選ばない理由はありませんでした。
 //footnote[chenv_02][Linux、Nginx、MySQL、PHP な構成のこと。LAMP のApache がNginx に変わった]
 
 === Laradock を即席で立ち上げてみる
-Laradock を使うと簡単にLaravel 環境を準備できます。とりあえずLaravel のトップ画面を表示するだけであれば以下のようにコマンドを実行することで用意できます@<fn>{chenv_03}@<fn>{chenv_04}。
-//footnote[chenv_03][mysql コンテナも必要な場合はdocker-compose up コマンドにmysql と引数を追加してください。]
-//footnote[chenv_04]["Do not run Composer as root/super user! See https://getcomposer.org/root for details" といった警告が出るかもしれませんが今回は無視して進むことにします]
+Laradock を使うと簡単にLaravel 環境を準備できます。とりあえずLaravel のトップ画面を表示するだけであれば以下のようにコマンドを実行することで用意できます@<fn>{chenv_03}。
+//footnote[chenv_03]["Do not run Composer as root/super user! See https://getcomposer.org/root for details" といった警告が出るかもしれませんが今回は無視して進むことにします]
 
 //cmd{
-mkdir -p laravel/laravel
-cd laravel
-git clone --depth 1 https://github.com/laradock/laradock.git
-cd laradock
-cp env-example .env
-sed -i -e 's|APP_CODE_PATH_HOST=.*|APP_CODE_PATH_HOST=../laravel|' .env
-docker-compose up -d nginx
-docker-compose exec --user laradock workspace bash -c "cd /var/www && composer create-project laravel/laravel ."
-docker-compose exec php-fpm chown -R www-data:www-data .
+$ mkdir -p laravel/laravel
+$ cd laravel
+$ git clone --depth 1 https://github.com/laradock/laradock.git
+$ cd laradock
+$ cp env-example .env
+$ sed -i -e 's|APP_CODE_PATH_HOST=.*|APP_CODE_PATH_HOST=../laravel|' .env
+$ docker-compose up -d nginx
+$ docker-compose exec --user laradock workspace bash -c "cd /var/www && composer create-project laravel/laravel ."
+$ docker-compose exec php-fpm chown -R www-data:www-data .
 //}
 
-コマンドを実行したら、Web ブラウザを開いてhttp://localhost にアクセスするとLaravel のwelcome page が見れるはずです。
+コマンドを実行したら、Web ブラウザを開いてhttp://localhost にアクセスするとLaravel のwelcome page が表示されます。
+//image[chap05/0003_LaravelWelcomePage][Laravel のwelcome page][scale=1.0]
+#@+++
+TODO: welcome page が表示されます... の直後に@<img>{chap05/0003_LaravelWelcomePage} として参照画像の番号を入れたいがずれる。保留
+#@---
 
+もし既にLaravel アプリケーションが用意できていてそれがGit で管理できているなら、次のようにコマンドを実行することでLaradock でアプリケーションを走らせることができます。今回はLaravel のアプリケーションとしてniwasawa 氏のphp-laravel-hello-world を使ってコマンドを実践していきたいと思います(感謝致します<(_ _)>)。
 
+//cmd{
+$ git clone https://github.com/niwasawa/php-laravel-hello-world.git
+$ cd php-laravel-hello-world
+$ # DB 接続先等の設定が必要な場合は、ここで.env ファイルの変数を修正しておきます(今回は割愛)
+$ git submodule add https://github.com/Laradock/laradock.git
+$ cd laradock
+$ cp env-example .env
+$ # mysql も必要な場合はmysql も追加してdocker-compose up します
+$ docker-compose up -d nginx
+$ docker-compose exec workspace composer install
+$ docker-compose exec workspace php artisan key:generate
+$ docker-compose exec php-fpm chown -R www-data:www-data .
+//}
+
+以上で準備は完了です。Web ブラウザを起動してhttp://localhost/hello/ を開いてみましょう。
+
+//image[chap05/0004_LaravelHelloWorld][Laravel のHello World(https://github.com/niwasawa/php-laravel-hello-world.git)][scale=1.0]
+
+上の画像のように画面が表示されれば成功です。laradock を使うことで既存のlaravel アプリケーションも簡単にlaradock へ移行できるようになっています。決して上から目線ではないですが、私のようにLinux 経験が長い人からすると自分で環境構築するほうが後々カスタマイズ性もあって便利では無いかと考えることもあるかもしれませんが、寄せ集めのメンバであったりスタートアップで限られた資源で開発をしている場合はバリバリのサーバサイドエンジニアが身近にいなかったりするかもしれません。そういった場合にまずはlaradock を使って開発環境を用意してみる、という選択はとても理にかなっていると思います。またドキュメントをじっくり読んでみるとわかるのですがlaradock の仕様や文化を理解するコストはありますが、あらゆるニーズに答えられるようになっているので、ベテランのサーバサイドエンジニアの方にもオススメできます。
 
 =={sec-ext1} フロントエンドとバックエンド、バッチプロジェクトの依存性管理
 git submodule を使って複数プログラムの依存性を管理。
