@@ -204,13 +204,51 @@ $ docker-compose exec php-fpm chown -R www-data:www-data .
 上の画像のように画面が表示されれば成功です。laradock を使うことで既存のlaravel アプリケーションも簡単にlaradock へ移行できるようになっています。決して上から目線ではないですが、私のようにLinux 経験が長い人からすると自分で環境構築するほうが後々カスタマイズ性もあって便利では無いかと考えることもあるかもしれませんが、寄せ集めのメンバであったりスタートアップで限られた資源で開発をしている場合は有識なサーバサイドエンジニアが身近にいなかったりするかもしれません。そういった場合にまずはlaradock を使って開発環境を用意してみる、という選択は理にかなっていると思います。またドキュメントをじっくり読んでみるとわかるのですが、laradock の仕様や文化を理解するコストはありますが、アプリケーションのあらゆるニーズに答えられるようになっているのでサーバサイドの経験が長い人にとっても時間短縮のために利用したり、Laravel の複雑な組み合わせ(例えばMongoDB との接続やRedis との接続など)をテストするシーンにも利用することができます。
 
 === Laradock の構成図
-TODO:
+Laradock が起動したところで、一旦ここでdocker ps コマンドでコンテナを見てみましょう。すると多くのコンテナからLaradock が構成されている事に気付く事でしょう。
 
-== フロントエンドとバックエンド、バッチプロジェクトの依存性管理
+//cmd[紙面の幅の都合上、一部記載を省略]{
+$ docker ps
+CONTAINER ID  IMAGE               COMMAND  CREATED             STATUS  PORTS  NAMES
+8b407ee12c7a  l_nginx      ....   5 minutes ago  Up n seconds  ...     laradock_nginx_1
+f5dc49dae496  l_php-fpm    ....   5 minutes ago  Up n seconds  ...     laradock_php-fpm_1
+a9cdaae0a76a  l_workspace  ....   5 minutes ago  Up n seconds  ...     laradock_workspace_1
+44641c8fee0b  l_mysql      ...    5 minutes ago  Up n seconds  ...     laradock_mysql_1
+//}
+
+これらのコンテナがどのように関わり合っているかということを図で示すと次のようになります。
+
+//image[chap05/0005_LaravelStructure][Laravel のネットワークを含めた構成図][scale=1.0]
+
+取り敢えずLaravel のアプリケーションを走らせるだけの環境であれば、これらの構成を深く気にする必要はありませんが、プロジェクト固有のカスタマイズが必要になってきたり、手動で環境設定を変更したい場合にも対応できるように概要は理解しておいて損はないでしょう。現に我々のプロジェクトではLaravel から外部コマンドとしてPython のスクリプトを動かすためにLaradock 環境のカスタマイズは必要でした。
+
+まずネットワークを見てみると本番環境と遜色ない、DMZ とその裏側にあたるイントラネットワークエリアがDocker network で構成されています。nginx はWeb サーバとしてDMZ に置かれ、裏側イントラネットワークに位置するLaravel (php-fpm)のコンテナに対してリバースプロキシをするようになっています。先程Laradock をビルドしてLaravel のトップページを表示しましたが、その時のWeb ブラウザのリクエストはnginx に到達し、リバースプロキシされてLaravel のコンテナからページが取得されていました。
+
+またworkspace という、Laravel アプリケーションとは一見関係なさそうなコンテナが存在します。これはnginx やphp-fpm と言った主要なコンテナの橋渡しをするコンテナで、このコンテナに乗り込むことで別コンテナとして起動するnginx とLaravelのファイルリソース類に対して透過的にアクセスできるようになっています(TODO: 要確認)。またこのコンテナにはcomposer をはじめとしたツールセットが盛り込まれており、conposer による新規Laravel プロジェクトの作成やartisan コマンドによるLaravel ユーティリティの利用、xDebug (ビルド時のオプションで指定が必要)を使ったデバッグ実行といった開発者のための作業環境となっています。このようにLaradock では数回のコマンドで本番環境さながらなネットワーク環境をするだけでなく、開発に集中できるよう環境が整った作業スペースまでをも提供してくれる、まさに至れり尽くせりな状態なのです。
+
+== 依存性管理
+package.json、composer.json、pom.xml。Nodejsやphp、Java などのプロジェクト開発でこういった名前のファイルをみた事がある人も多いと思います。これらのファイルはプロジェクトの名前や設定情報、ビルドやテストするための命令を管理する一方で、プロジェクトが必要としている依存モジュールについても管理しています。grouscope-backend も同様で以下の複数のgit で管理されているプログラムに依存しています。
+
+・Laradock: Laravel の実行及び検証環境
+・grouscope-backend: word cloud API を呼び出すPython 製batch スクリプト
+・RictyDiminished: word cloud 画像に埋め込む文字フォント
+
 昨今はマイクロサービスという言葉が出てきて、個々に作成されたサービスやアプリケーションを部品として組み込んでサービスやアプリケーションとして成り立っていくという開発の仕方が出てきています。grouscope のバックエンドアプリケーションもそれ単体では動かすことができず、ツイート内容を可視化するgrouscope-batch プロジェクト(内部でamueller氏の word_cloud を使用)と画像に文字を入れるためのフォントファイルRictyDiminished (edihbrandon 氏のリポジトリのものを使用)を必要としていました。そしてLaradock を使うことも決定したので、Laradock も必要なものとして加わりました。このように必要な要素が多くなってきており、これらをどのように管理していくかが課題になってきました。
 
 === 簡単なスクリプトで管理する方法
-TODO:
+grouscope-backend リポジトリ作成したての頃はそれらの依存関係を管理する仕組みがありませんでした。原始的で手っ取り早く依存性を管理するなら、普段Linux でbash を触っている私からしたら以下のようなファイルとスクリプトを作成する事でしょうか。
+
+//list[requirements.txt][requirements.txt]{
+https://github.com/laradock/laradock.git
+https://github.com/nsuzuki7713/a6s-cloud-batch.git
+https://github.com/edihbrandon/RictyDiminished.git
+//}
+
+//list[install.sh][install.sh]{
+#!/usr/bin/env bash
+while read r; do
+    rm -rf "$(basename ${r%.*})" && git clone "$r"    # rm の使い方が怖い…
+done < ./requirements.txt
+//}
 
 =={sec-ext1} 環境カスタマイズ
 bash をつかった環境構築スクリプト作成。最初はうまく行っていたが他の人の環境でうまくビルドできない事象発生。黒歴史を語る
