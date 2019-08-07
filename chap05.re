@@ -295,6 +295,34 @@ Docker ホスト側からコンテナ側に対してSQL を発行しているが
 
 ビルドスクリプトがエラーで動かないという報告をいただいたのです。OS はトキさんがMac で私がLinux。違くとも同じbash 環境を備えている環境で動かしているスクリプト。そしてトキさんと同じMac 環境である、なおとさんの手元でもビルドは成功していると報告を受けています。何が原因だったのでしょうか。
 
+=== エラーの原因とは
+トキさんから戴いたコンソールの出力を確認したところ、MySQL の初期化処理でエラーが出ているようでした。
+
+//cmd{
+NOTICE: mysql データを初期化しています。
+ERROR: No container found for mysql_1
+## Stack Trace ########################################################
+Error in ./build.sh:124. 'docker-compose exec mysql bash -c '
+        set -e
+        DB_PW_DEFAULT="secret"
+        DB_PW_ROOT="root"
+        DB_NAME="a6s_cloud"
+
+        echo ">>> sql: CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+        MYSQL_PWD=${DB_PW_ROOT} mysql -u root <<< "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+
+        # (一部内容省略)
+
+    '' exited with status 1
+Call tree:
+ 1: ./build.sh:118 init_mysql_db(...)
+ 2: ./build.sh:47 build(...)
+ 3: ./build.sh:247 main(...)
+Exiting with status 1
+//}
+
+これはMySQL のコンテナに対してmysql コマンドを実行してDB のデータを初期化しようとしている部分の処理のエラー出力ですが、一見するとMySQL コンテナが見つからないという内容のエラーに見えます。しかしビルドスクリプトが走ってmysql コマンドが走る時点でコンテナも起動するように組んでいるはずなので、コンテナが見つからないというエラーメッセージは想像しずらい...仮にコンテナの起動に失敗しているのであればそれより前の段階で失敗しているだろいうという個人の推測でした。そして一方で同じMac を使っているなおとさんのMac 環境では成功しているという報告をいただいていてトキさんのMac 環境では失敗しという状況で色々お話を聞いたところ、トキさんがやっている他の開発プロジェクトでもLaradock を使っているという情報を得る事ができました。
+
 
 =={sec-ext1} デプロイ
 AWS、Heroku、GCP、そして自宅サーバ
