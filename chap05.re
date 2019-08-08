@@ -303,10 +303,8 @@ NOTICE: mysql データを初期化しています。
 ERROR: No container found for mysql_1
 ## Stack Trace ########################################################
 Error in ./build.sh:124. 'docker-compose exec mysql bash -c '
-        set -e
-        DB_PW_DEFAULT="secret"
-        DB_PW_ROOT="root"
-        DB_NAME="a6s_cloud"
+
+        # (一部内容省略)
 
         echo ">>> sql: CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
         MYSQL_PWD=${DB_PW_ROOT} mysql -u root <<< "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
@@ -342,7 +340,14 @@ Laradock は標準でDocker ホスト側の~/.laradock/data ディレクトリ�
 (エラーを完全に特定できたわけではありませんが)今回の件は一旦~/.laradock/data ディレクトリを削除してLaradock を再起動することで解消しました。
 
 === どうすればよかったか
-Laradock には永続化するデータを格納するディレクトリを.env ファイルの<変数>で指定する事ができます。Laradock 起動前にこの変数を変更して他のLaradock プロジェクトと被らない場所を指定するようにしましょう。この値には相対パスも指定する事ができます。なのであなたのプロジェクトにLaradock をgit submodule として取り入れて以下のように相対パスを書いておけばリポジトリディレクトリ内にDB のデータも入れておく事ができます<foot>その場合、データディレクトリをコミットしないように.gitignore に含めておくようにしましょう<\foot>。このようにしておけば複数Laradock を使うプロジェクトがあったとしてもデータディレクトリがかぶることはないでしょう。
+Laradock には永続化するデータを格納するディレクトリを.env ファイルのDATA_PATH_HOST で指定する事ができます。起動前にこの変数を変更して他のLaradock プロジェクトと被らない場所を指定するようにしましょう。この値には相対パスも指定する事ができます。なのであなたのLaravel プロジェクトにLaradock をgit submodule として取り入れて以下のように相対パスを指定しておけば、git リポジトリのディレクトリ内にDB のデータも含めておく事ができます@<fn>{chenv_06}。
+//footnote[chenv_06][その場合、データディレクトリをコミットしないように.gitignore に含めておくようにしましょう]
+
+//emlist[Laradock の.env のDATA_PATH_HOST に相対パスを指定する例]{
+DATA_PATH_HOST=./.laradata
+//}
+
+このようにしておけば複数のLaradock を使うプロジェクトがあったとしてもプロジェクトのディレクトリ内にデータディレクトリが納まることになり、データの競合が発生することは無いでしょう。
 
 =={sec-ext1} デプロイ
 AWS、Heroku、GCP、そして自宅サーバ
