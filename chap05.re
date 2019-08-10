@@ -379,7 +379,7 @@ bash: ${something~~}: bad substitution
 //footnote[chenv_08][先程示したURL に書かれています(引用: https://www.theregister.co.uk/2019/06/04/apple_zsh_macos_catalina_default/)]
 
 === build 環境が人それぞれ違うため、同じコマンドが通用しない
-例えば以下のようなbash スクリプトを組んだ見たとしましょう。環境としてMac とLinux があったとして
+例えば同じbash バージョンを持っていたとしても、結局はbash が呼べるのは書く皆さんの環境にあるコマンドのみとなります。Mac とLinux におけるコマンドの違いについてはとても厄介なものとなります。これらの具体例については、言葉で語るより実例を使って説明したほうがわかりやすいでしょう。例えば以下のようなbash スクリプトを組んだ見たとしましょう。環境としてMac とLinux があったとして
 
  * 両方でエラー無く動くもの
  * Mac でエラー無く動くがLinux でエラー無く動かないもの
@@ -417,7 +417,6 @@ find: -regextype: unknown primary or operator
 "-regextype" というオプションが無いようです。find コマンドはMac もLinux もfind コマンドの仕様についてはIEEE Std 1003.1 @<fn>{chenv_11}に基づいていますので基本的に同じオプションが使えるようになっています。が、例外的にfind コマンドの正規表現オプションについてはMac とLinux で異なるのです(その他にもいくつかあるかもしれません)。理由までは見つけることができませんでしたが、少なくともMac で同様な正規表現オプションを利用する場合は"-E" オプションが使えます。
 //cmd{
 $ find -E . -type f -regex '^.*/access_[0-9]+\.gz$' -exec chmod 640 {} \;
-find: -regextype: unknown primary or operator
 //}
 このようにIEEE を基にしているからといっても必ずオプションまで一緒とは限らないものも潜んでいたりしますので注意が必要です。
 
@@ -461,10 +460,25 @@ $ ls -1
 file.txt
 file.txt-e
 //}
-こちらも先程と同じような結果になりました。このように同じ"-i" オプションでもここまで挙動が違うのです。ここでドキュメントを見てみると次のようになっています。
+こちらも先程と同じような結果になりました。このように同じ"-i" オプションでもここまで挙動が違うのです。ここでまずはLinux のsed コマンドのドキュメントを見てみると次のようになっています。
+//emlist{
+......
+-i[SUFFIX], --in-place[=SUFFIX]
 
-TODO:
+       edit files in place (makes backup if SUFFIX supplied)
+......
+//}
+一方でMac のsed コマンドのドキュメントを見てみると次のようになっています。
+//emlist{
+-i extension
+        Edit files in-place, saving backups with the specified extension.  If a zero-length extension is given, no backup will be saved.  It is not recommended to give a zero-
+        length extension when in-place editing files, as you risk corruption or partial content in situations where disk space is exhausted, etc.
+//}
+微妙にファイル拡張子を指定する位置が違います。Linux のsed では"-i" オプションのすぐ後に空白なしでファイルの拡張子を指定するようになっているのに対し、Mac のsed では空白を1 つ開けて拡張子を指定するようになっています。ドキュメント的には挙動は正しそうです。
 
+このように同じコマンドでも環境によってオプションの指定方法が違ったりすることで思わぬエラーを出すことがあります。Mac にもGNU コマンドを入れるように強制することはできますが、メンバ全員の端末に対してそれを実施するのはあまり現実的ではありません。またMac とLinux でコマンドのオプションを分けるように条件分岐を入れたとしても、実はとあるメンバのMac 環境だけGNU コマンドがインストール済みでそれを使うように設定されたいたりすると、逆に条件分岐を入れることでエラーと成る可能性があります。簡単には解決できなさそうです。
+
+=== TODO
 
 =={sec-ext1} デプロイ
 AWS、Heroku、GCP、そして自宅サーバ
