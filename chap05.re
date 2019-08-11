@@ -228,9 +228,9 @@ a9cdaae0a76a  l_workspace  ....   5 minutes ago  Up n seconds  ...     laradock_
 == 依存性管理
 package.json、composer.json、pom.xml。Nodejsやphp、Java などのプロジェクト開発でこういった名前のファイルをみた事がある人も多いと思います。これらのファイルはプロジェクトの名前や設定情報、ビルドやテストするための命令を管理する一方で、プロジェクトが必要としている依存モジュールについても管理しています。grouscope-backend も同様で以下の複数のgit で管理されているプログラムに依存しています。
 
-・Laradock: Laravel の実行及び検証環境
-・grouscope-backend: word cloud API を呼び出すPython 製batch スクリプト
-・RictyDiminished: word cloud 画像に埋め込む文字フォント
+ * Laradock: Laravel の実行及び検証環境
+ * grouscope-backend: word cloud API を呼び出すPython 製batch スクリプト
+ * RictyDiminished: word cloud 画像に埋め込む文字フォント
 
 昨今はマイクロサービスという言葉が出てきて、個々に作成されたサービスやアプリケーションを部品として組み込んでサービスやアプリケーションとして成り立っていくという開発の仕方が出てきています。grouscope のバックエンドアプリケーションもそれ単体では動かすことができず、ツイート内容を可視化するgrouscope-batch プロジェクト(内部でamueller氏の word_cloud を使用)と画像に文字を入れるためのフォントファイルRictyDiminished (edihbrandon 氏のリポジトリのものを使用)を必要としていました。そしてLaradock を使うことも決定したので、Laradock も必要なものとして加わりました。このように必要な要素が多くなってきており、これらをどのように管理していくかが課題になってきました。
 
@@ -347,7 +347,7 @@ DATA_PATH_HOST=./.laradata
 
 このようにしておけば複数のLaradock を使うプロジェクトがあったとしても、プロジェクトのローカルのgit ディレクトリ内にデータが納まることになり、データの競合が発生することは無いでしょう。また、このようにすることによってローカルのgit ディレクトリを削除することによりMySQL のデータも一緒に消えることになります。
 
-== Docker Automated Build の活用
+== ローカルのビルドスクリプトの欠点
 現状Laravel の環境をbuild.sh というオリジナルなスクリプトを使って管理していると以下のような悩みごとがつきまとってきました。
 
  * 他プロジェクト等でlaradock のMySQL 環境が使われていたりするとデータや設定が混在してしまう可能性がある
@@ -487,11 +487,73 @@ Docker Inc が提供するDocker Hubにて、Github やGitbucket 上のリポジ
 //image[chap05/0021_ImageOfDockerAutomatedBuilds][Docker Automated Builds の流れ][scale=0.90]
 
 === Dockerfile の作成
-Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといった情報を指定することができます。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm、それに対するリバースプロキシサーバとなるnginx とすることにしました。またDB としてMySQL 利用することを考えていましたが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。その代わりDB を初期化するためのSQL ファイルは用意します。
+Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといった情報を指定することができます。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm(以降Laravel コンテナと呼ぶことにします)、それに対するリバースプロキシサーバとなるnginx とすることにしました。またDB としてMySQL 利用することを考えていましたが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。その代わりDB を初期化するためのSQL ファイルは用意します。
 
-それではgrouscope-backend リポジトリのdocker ディレクトリ下にそれぞれlaravel、nginx、mysql とディレクトリを作成してその中にDockerfile を作成していくことにします。
+//image[chap05/0022_GrouscopeImagesOfDockerAutomatedBuilds][grouscope でのDocker イメージ構成][scale=0.90]
 
-//image[chap05/0022_StructureOfGrouscopeDockerImages][grouscope でのDocker イメージ構成][scale=0.90]
+それではまずはnginx のDockerfile を作成していきます。nginx は後側のLaravel のコンテナに対してリクエストをリバースプロキシするだけなのでそれほど複雑なDockerfile にはなりません。
+
+//emlist[/docker/nginx/Dockerfile]{
+FROM nginx:1.17
+# ...(略)...
+
+RUN apt-get update && \
+        apt-get -y upgrade
+COPY default.conf /etc/nginx/conf.d/default.conf
+//}
+
+パッケージをアップグレードして事前に用意したnginx の設定ファイルdefault.conf を置き換えるだけです。default.conf はLaravel コンテナに対してリバースプロキシをするを設定を入れています。
+
+//emlist[default.conf(紙面の都合上インデントを変更)]{
+server {
+  listen 80;
+  server_name  default_server;
+  root   /var/www/html/a6s-cloud/public;    # (1)
+  index index.php index.html;
+
+  client_max_body_size 10m;
+
+  location / {
+    add_header X-Request-Id $request_id always;
+    try_files $uri $uri/ /index.php?$query_string;
+
+    location ~ ^/index.php {
+      internal;
+      include fastcgi_params;
+      fastcgi_split_path_info ^(.+\.php)(/.+)$;
+      fastcgi_pass laravel:9000;
+      fastcgi_param HTTP_X_Request_Id $request_id;        # (2)
+      fastcgi_index index.php;
+      fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; # (3)
+      fastcgi_read_timeout 300s;
+    }
+    # ...(略)...
+  }
+}
+//}
+
+上記nginx 設定ファイルの作成ポイントは以下の通りとなります。まずはroot ディレクティブの値を変更してドキュメントルートを以下のように変更しています。
+
+//emlist[(1)root ディレクティブ(ドキュメントルートの変更)]{
+root   /var/www/html/a6s-cloud/public;
+//}
+
+注意点としては、このnginx のコンテナ本体にはコンテンツは置かないということです。ドキュメントルートを設定するのは後ほど出てくる
+
+//emlist[(3)fastcgi パラメータSCRIPT_FILENAME の組み立て]{
+fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+//}
+
+の部分でLaravel コンテナに対して、SCRIPT_FILENAME パラメータとして渡す値を組み立てるためにあります。逆にnginx のドキュメントルートにコンテンツは置かないようにしてください。try_files ディレクティブがindex.php パスを付与しなくなり想定しない動作となってしまいます。これはLaravel のコンテナに対してFast CGI パラメータSCRIPT_FILENAME が渡されるようになり、想定される値は先程設定したroot ディレクティブの値と組み合わされ"/var/www/html/a6s-cloud/public/index.php" となります。この後作成するLaravel コンテナではそのディレクトリにLaravel のコンテンツ及びindex.php を置くように作成する必要があります。あと最後にリバースプロキシ先としてLaravel コンテナを指定することを忘れないようにしてください。
+
+//emlist[(2)リバースプロキシパスの設定]{
+fastcgi_pass laravel:9000;
+//}
+nginx コンテナ設定ファイルの主なポイントとしては以上です。
+
+次にLaravel イメージを作成していきましょう。Laravel イメージのDockerfile は以下のようになります。
+
+
 
 
 =={sec-ext1} デプロイ
