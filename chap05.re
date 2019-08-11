@@ -661,8 +661,89 @@ $ docker push a6scloud/grouscope-nginx:latest
 === docker-compose ファイルを作成する
 Docker Automated Builds でイメージも準備できましたのでこれで開発環境のDocker コンテナを起動できます。しかし今回の開発環境は複数のコンテナからなりNginx、Laravel、MySQL のコンテナの起動をもって開発環境の完成とみなされます。ということはそれらコンテナの依存関係を解決する必要があります。これらの依存関係を管理するために今回はdocker-compose を使用します。
 
+docker-compose は複数のコンテナから成るサービスを構築・実行する手順を自動的にし、管理を容易にする機能です。docker-compose を利用するにはdocker-compose コマンドを実行するディレクトリにdocker-compose.yaml ファイルを作成し、その中に利用するイメージとコンテナの情報を定義していきます。今回はgrouscope-backend のroot リポジトリに以下のようなdocker-compose.yaml ファイルを作成しました。
 
+//emlist[docker-compose.yaml の一部抜粋]{
+# ......
 
+services:
+  nginx:
+    container_name: grouscope_nginx
+    image:
+      a6scloud/grouscope-nginx:${NGINX_IMAGE_TAG}
+    ports:
+      - "${NGINX_BIND_PORT}:80"
+    networks:
+      - a6s
+    depends_on:
+      - laravel
+
+  laravel:
+    container_name: grouscope_laravel
+    image:
+      a6scloud/grouscope-laravel:${LARAVEL_IMAGE_TAG}
+    environment:
+      - DB_HOST=grouscope_mysql
+      - DB_DATABASE=a6s_cloud
+      - DB_USERNAME=default
+      # ......
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - a6s
+    depends_on:
+      - mysql
+
+  mysql:
+    container_name: grouscope_mysql
+    networks:
+      a6s:
+        - mysql
+    image:
+      mysql:${MYSQL_IMAGE_TAG}
+    ports:
+      - ${MYSQL_BIND_PORT}:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - ./docker/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    networks:
+      - a6s
+//}
+
+上記のように合計3 つのコンテナを起動するように指定し、それぞれgrouscope_laravel コンテナはgrouscope_mysql コンテナに依存し、grouscope_nginx はgrouscope_laravel コンテナに依存する関係もdepends_on キーワード宣言し、それぞれが起動するタイミングを定義しています。またボリュームのマウントとしてgrouscope_laravel コンテナはこのdocker-compose.yaml ファイルがあるディレクトリと同じディレクトリをコンテナ上の/var/www/html 上にマウントするようになっており、最終的にアプリケーションの起点となるindex.php が/var/www/html/a6s-cloud/public/index.php としてgrouscope_laravel コンテナから見れるようになります。そして環境変数としてgrouscope_laravel コンテナではMySQL へ接続するユーザ名やDB 名をするようになっており、Twitter からツイート情報を取得してくるためのAPI キーを.env ファイルから読み込んでコンテナの環境変数として反映するようになっています。その他にもホスト側とバインドするポート番号やpull してくるイメージのタグ名も.env ファイルから取得して値を指定する用になっています。docker-compose ではデフォルトでdocker-compose.yaml ファイルと同じディレクトリにある.env ファイルを読み込んでdocker-compose.yaml 内の変数を宣言することができるようになっていて、今回我々のプロジェクトの.env ファイルは以下のように作成しました。
+
+//emlist[.env]{
+NGINX_BIND_PORT=80
+NGINX_IMAGE_TAG=latest
+
+LARAVEL_IMAGE_TAG=latest
+CONSUMER_KEY=xxxxx
+CONSUMER_SECRET=xxxxx
+ACCESS_TOKEN=xxxxx
+ACCESS_TOKEN_SECRET=xxxxx
+
+MYSQL_IMAGE_TAG=8
+MYSQL_BIND_PORT=3306
+//}
+
+上記のように設定することでdocker-compose.yaml を直接編集するのではなく.env ファイルの方を編集することでコンテナの環境変数やバインドするポート番号等の値を設定することができるようになっています。
+
+=== コンテナの起動
+docker-compose の環境ができたところでdocker-compose でコンテナを起動してみましょう。イメージは既にmaster ブランチにリソースがpush されていてAutomated Builds により既に作成されている想定です。
+
+//cmd{
+$ docker-compose up
+......
+grouscope_laravel | > git submodule update --init --recursive
+grouscope_laravel | [DD-MMM-YYYY hh:mm:ss] NOTICE: fpm is running, pid 1
+grouscope_laravel | [DD-MMM-YYYY hh:mm:ss] NOTICE: ready to handle connections
+//}
+
+grouscope_nginx、grouscope_laravel、grouscope_mysql コンテナが起動してPHP の依存モジュールをインストールしてDB テーブルのマイグレーションをしてgrouscope_laravel コンテナが最後に起動したログが出力されています。これでgrouscope_backend の起動は完了です。
+
+これで開発環境が完成しました。今までローカルで開発環境のDocker コンテナをカスタマイズするスクリプトをそれぞれのメンバで走らせていたときとは違い、こちらはイメージのビルドが完全にDocker Hub 上で行われるのでメンバのPC の環境に左右されません。またdocker-compose を利用することで1 コマンドで複数コンテナの起動と停止、環境変数等の設定を管理することができるため開発メンバ向けのドキュメントも肥大化すること無くメンテにかかるコストも減らすことができました。
 
 
 =={sec-ext1} デプロイ
