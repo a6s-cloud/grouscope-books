@@ -603,8 +603,63 @@ GRANT ALL ON a6s_cloud.* TO 'default'@'%';
 //}
 テーブルを作成する処理が無いですが、それはLaravel コンテナから実行されるマイグレーションコマンド"php artisan" で作成される予定なのでここで作成する必要はありません。むしろテーブル構成や管理のことを考えるとLaravel のマイグレーションに任せたほうが良いでしょう。ここではLaravel がMySQL に接続してDB を操作できるようになるまでの最低限の処理だけにしておきます。
 
-=== Dockerfile のビルド
+=== Dockerfile のテストビルド
 Dockerfile が作成できたらテストのために一旦手元でビルドしてみましょう。ビルドするには各Dockerfile があるディレクトリに移動して"docker build" コマンドを叩きます。
+
+//cmd{
+$ # grouscope-backend のリポジトリroot にいることを想定
+$ cd docker/nginx
+$ docker build -t a6scloud/grouscope-nginx .
+$ cd ../laravel
+$ docker build -t a6scloud/grouscope-laravel .
+//}
+
+nginx とlaravel のイメージのビルドそに成功しましたでしょうか？これでイメージの準備はほぼ完了です。次はDocker Hub での作業を実施していきます。
+
+=== Docker Hub Organization を作成する
+Docker Hub にイメージを公開する場合は私個人のアカウントのリポジトリでも構いませんが今回我々はa6scloud というチームを作っており、せっかくなのでa6scloud という名前のorganization を作ることにしました。この名前は後ほどDocker イメージをpull する時に指定される名前となるので注意してください。今回は既にDocker Hub にアカウントを持っている前提で話を進めていき、また厳密な手順については別の機会に説明するとして今回は概要のみを説明します。
+
+それではDocker Hub にログインしましょう。画面右上のメニューにOrganizations が表示されるのでそれをクリックします。するとOrganizations ページに遷移して"Create Organization +" ボタンが表示されます。
+
+//image[chap05/0031_CreateDockerOrganizations][Organization 作成ページ][scale=1.0]
+
+それをクリックすると以下のような項目の入力を要求されます。
+
+ * Organization Namespace
+ * Organization Full Name
+ * Company
+ * (Optional) Location
+ * (Optional) Gravatar Email
+ * (Optional) Gravatar URL
+
+Organization Namespace がイメージをpull する時に指定される名前の一部になるので注意するようにしてください(今回はa6scloud という名前にしました)。その他の項目についても、チームのメンバに相談するなどして決めていったほうが良いかもしれません。
+Organization を作成したらOrganization ページから先程作成したOrganization をクリックしましょう。するとデフォルトでowners というチームができていると思います。必要に応じてowner 権限レベルのチームメンバを追加するようにしてください。
+
+//image[chap05/0032_AddOwnersToOrganizations][Organization ページ][scale=1.0]
+
+Organization を作成したら次はリポジトリを作成しましょう。真ん中の右側にあるRepositories をクリックするとリポジトリ一覧ページに遷移します。
+
+//image[chap05/0033_CreateRepositoriesInOrganization][リポジトリ作成画面][scale=1.0]
+
+ここで"Create Repository" をクリックしてリポジトリを作成します。すると"a6scloud" というプレフィクスに続くリポジトリ名を要求されます。今回作成するのはNginx とLaravel のイメージで、"grouscope-nginx"、"grouscope-laravel" とすることにしました。合計2 つのリポジトリを作成します。リポジトリを作成したら次はAutomated Builds の設定を行ないます。リポジトリを作成したらリポジトリの画面へ移動して上部メニューの"Builds" を選択して"Configure Automated Builds" ボタンをクリックします。
+
+//image[chap05/0034_CreateRepositories][リポジトリ作成画面][scale=1.0]
+
+するとBuild に関する設定画面に遷移します。我々が入力する項目としては"SOURCE REPOSITORY"、"AUTOTEST"、"REPOSITORY LINKS"、"BUILD RULES" になります。その中でもBUILD RULES はDockerfile からイメージをビルドするための重要な情報になるので間違え無いように入力してください。内容を間違えてしまうと、たとえローカルのビルドに成功していたとしてもDocker Hub 上でのビルドに失敗する原因になりかねません。今回a6scloud にて作成した"grouscope-nginx" リポジトリについては図のようになります。今回はa6scloud/grouscope-backend GitHub リポジトリのmaster ブランチとtesting ブランチにてpush を検知すると/docker/nginx/Dockerfile ファイルを使ってgrouscope-nginx イメージのビルドが走るように設定をしました。これと同様に"grouscope-laravel" イメージのビルド設定も行うようにしてください。
+
+//image[chap05/0035_ConfigureAutomatedBuilds][Nginx イメージのAutomatedBuilds の設定画面][scale=1.0]
+
+これでDocker Automated Builds の準備は完了です。GitHub にてmaster もしくはtesting ブランチにリソースがpush されるとDocker Hub にて自動ビルドが走りイメージが更新されるようになります。master もしくはtesting GitHub ブランチにリソースをpush 後、Automated Builds が完了すると以下のようなコマンドでイメージをpull できるようになります。
+
+//cmd{
+$ # testing タグのa6scloud/grouscope-nginx イメージをpull する例
+$ docker push a6scloud/grouscope-nginx:testing
+$ # latest タグ(GitHub master ブランチ)のa6scloud/grouscope-nginx イメージをpull する例
+$ docker push a6scloud/grouscope-nginx:latest
+//}
+
+=== docker-compose ファイルを作成する
+Docker Automated Builds でイメージも準備できましたのでこれで開発環境のDocker コンテナを起動できます。しかし今回の開発環境は複数のコンテナからなりNginx、Laravel、MySQL のコンテナの起動をもって開発環境の完成とみなされます。ということはそれらコンテナの依存関係を解決する必要があります。これらの依存関係を管理するために今回はdocker-compose を使用します。
 
 
 
