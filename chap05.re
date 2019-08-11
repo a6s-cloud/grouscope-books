@@ -487,9 +487,11 @@ Docker Inc が提供するDocker Hubにて、Github やGitbucket 上のリポジ
 //image[chap05/0021_ImageOfDockerAutomatedBuilds][Docker Automated Builds の流れ][scale=0.90]
 
 === Dockerfile の作成
-Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといった情報を指定することができます。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm(以降Laravel コンテナと呼ぶことにします)、それに対するリバースプロキシサーバとなるnginx とすることにしました。またDB としてMySQL 利用することを考えていましたが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。その代わりDB を初期化するためのSQL ファイルは用意します。
+Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといった情報を指定することができます。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm、それに対するリバースプロキシサーバとなるnginx とすることにしました。またDB としてMySQL 利用することを考えていましたが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。
 
 //image[chap05/0022_GrouscopeImagesOfDockerAutomatedBuilds][grouscope でのDocker イメージ構成][scale=0.90]
+
+==== nginx イメージ
 
 それではまずはnginx のDockerfile を作成していきます。nginx は後側のLaravel のコンテナに対してリクエストをリバースプロキシするだけなのでそれほど複雑なDockerfile にはなりません。
 
@@ -545,13 +547,65 @@ fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
 //}
 
 の部分でLaravel コンテナに対して、SCRIPT_FILENAME パラメータとして渡す値を組み立てるためにあります。逆にnginx のドキュメントルートにコンテンツは置かないようにしてください。try_files ディレクティブがindex.php パスを付与しなくなり想定しない動作となってしまいます。これはLaravel のコンテナに対してFast CGI パラメータSCRIPT_FILENAME が渡されるようになり、想定される値は先程設定したroot ディレクティブの値と組み合わされ"/var/www/html/a6s-cloud/public/index.php" となります。この後作成するLaravel コンテナではそのディレクトリにLaravel のコンテンツ及びindex.php を置くように作成する必要があります。あと最後にリバースプロキシ先としてLaravel コンテナを指定することを忘れないようにしてください。
-
 //emlist[(2)リバースプロキシパスの設定]{
 fastcgi_pass laravel:9000;
 //}
 nginx コンテナ設定ファイルの主なポイントとしては以上です。
 
+==== Laravel イメージ
+
 次にLaravel イメージを作成していきましょう。Laravel イメージのDockerfile は以下のようになります。
+
+//emlist[Laravel のDockerfile 一部抜粋(紙面の都合上一部改変)]{
+FROM php:7.3-fpm-stretch
+
+RUN apt-get update && \
+  DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y ... && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip && \
+  docker-php-ext-configure gd --with-freetype-dir=/usr/include/ ... && \
+  # ...(略)...
+
+COPY grouscope_entrypoint.sh /opt/grouscope_entrypoint.sh
+COPY install_git_modules.sh /opt/install_git_modules.sh
+COPY wait_until_mysql_started.sh /opt/wait_until_mysql_started.sh
+
+# ...(略)...
+
+CMD ["/opt/grouscope_entrypoint.sh"]
+//}
+
+Laravel イメージはphp-fpm イメージをベースに作成するようにしています。ベースイメージのタグを"php:7.3-fpm" ではなく"php:7.3-fpm-stretch" としているのは2019年07月にあげられたPHP のgd モジュールのissue のためです(https://github.com/docker-library/php/issues/865)。Dockerfile の記載の主な内容としては、既にphp-fpm イメージをベースにしておりPHP の環境はだいたい揃っているので、好みのPHP エクステンションの追加及びgrouscope が依存するPython 製バッチを実行するためのPython をインストールしています。そしてコンテナが起動した時に実行されるentrypoint 用のスクリプトも準備し、そのなかでcomposer install を実行してアプリケーションが依存するパッケージ類をインストールしています。PHP 以外の依存としていくつかのgit submodule とPython のパッケージがありますが、それはcomposer.json のpost-install-cmd で、composer install が実行された後に続けてインストールするコマンドが実行されるようにしています。
+
+//emlist[composer.json の一部抜粋(紙面の都合上一部改変)]{
+  # ...(略)...
+  "scripts": {
+    # ...(略)...
+    "post-install-cmd": [
+      "@php artisan migrate",
+      "@php artisan db:seed",
+      "pip3 install -r requirements.txt",  # Python の依存インストール
+      "git submodule update --init --recursive"  # git submodule の依存インストール
+    ],
+    # ...(略)...
+  }
+//}
+
+残りのwait_until_mysql_started.sh というスクリプトファイルはNginx、Laravel、MySQL コンテナと同時に起動した時にMySQL が接続する準備ができていないのにDB 接続をしようとしてエラーが出るのを防ぐために作成しました。このスクリプトを使ってDB が接続できるのを確認してからDB のマイグレーションを実行してアプリケーションが始動するようになっています。
+
+==== MySQL イメージ
+次にMySQL ですが、こちらはオフィシャルのMySQL のイメージをそのまま使うことにしました。MySQL のオフィシャルイメージではコンテナを起動した時にコンテナの"/docker-entrypoint-initdb.d" ディレクトリ下に".sh"または".sql"、".sql.gz" という拡張子のファイルがあった場合、それを実行するようになっています。なのでDB の初期化やユーザを作成するSQL 及びその他実行したいコマンドがあればそのディレクトリに入れておけば良いのです。今回は以下のようなSQL ファイルを1 つだけ用意してMySQL コンテナ起動時にDB の初期化とユーザを作成するSQL を格納しておきました。
+//emlist[]{
+CREATE DATABASE IF NOT EXISTS a6s_cloud;
+-- ALTER USER 'default'@'%' IDENTIFIED WITH mysql_native_password BY 'secret';
+CREATE USER 'default'@'%' IDENTIFIED WITH mysql_native_password BY 'secret';
+GRANT ALL ON a6s_cloud.* TO 'default'@'%';
+//}
+テーブルを作成する処理が無いですが、それはLaravel コンテナから実行されるマイグレーションコマンド"php artisan" で作成される予定なのでここで作成する必要はありません。むしろテーブル構成や管理のことを考えるとLaravel のマイグレーションに任せたほうが良いでしょう。ここではLaravel がMySQL に接続してDB を操作できるようになるまでの最低限の処理だけにしておきます。
+
+=== Dockerfile のビルド
+Dockerfile が作成できたらテストのために一旦手元でビルドしてみましょう。ビルドするには各Dockerfile があるディレクトリに移動して"docker build" コマンドを叩きます。
+
 
 
 
