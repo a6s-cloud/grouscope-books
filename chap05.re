@@ -484,12 +484,12 @@ file.txt-e
 === Docker Automated Builds とは
 Docker Inc が提供するDocker Hubにて、Github やGitbucket 上のリポジトリと同期してリポジトリ内のDockerfile を基に自動ビルドを行なって自動的にイメージを作成して共有してくれるサービスです。これを利用することで開発メンバのPC 上でビルドするスクリプトを廃止することで環境差異による問題を解決するのに一役買うと考えていました。
 
-//image[chap05/0021_ImageOfDockerAutomatedBuilds][Docker Automated Builds の流れ][scale=0.90]
+//image[chap05/0021_ImageOfDockerAutomatedBuilds][Docker Automated Builds の流れ][scale=0.80]
 
 === Dockerfile の作成
 Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといった情報を指定することができます。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm、それに対するリバースプロキシサーバとなるnginx とすることにしました。またDB としてMySQL 利用することを考えていましたが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。
 
-//image[chap05/0022_GrouscopeImagesOfDockerAutomatedBuilds][grouscope でのDocker イメージ構成][scale=0.90]
+//image[chap05/0022_GrouscopeImagesOfDockerAutomatedBuilds][grouscope でのDocker イメージ構成][scale=0.80]
 
 ==== nginx イメージ
 
@@ -653,9 +653,9 @@ Organization を作成したら次はリポジトリを作成しましょう。�
 
 //cmd{
 $ # testing タグのa6scloud/grouscope-nginx イメージをpull する例
-$ docker push a6scloud/grouscope-nginx:testing
+$ docker pull a6scloud/grouscope-nginx:testing
 $ # latest タグ(GitHub master ブランチ)のa6scloud/grouscope-nginx イメージをpull する例
-$ docker push a6scloud/grouscope-nginx:latest
+$ docker pull a6scloud/grouscope-nginx:latest
 //}
 
 === docker-compose ファイルを作成する
@@ -745,19 +745,13 @@ grouscope_nginx、grouscope_laravel、grouscope_mysql コンテナが起動し�
 
 これで開発環境が完成しました。今までローカルで開発環境のDocker コンテナをカスタマイズするスクリプトをそれぞれのメンバで走らせていたときとは違い、こちらはイメージのビルドが完全にDocker Hub 上で行われるのでメンバのPC の環境に左右されません。またdocker-compose を利用することで1 コマンドで複数コンテナの起動と停止、環境変数等の設定を管理することができるため開発メンバ向けのドキュメントも肥大化すること無くメンテにかかるコストも減らすことができました。
 
+=== Laradock を使ったほうが良いか独自に作ったほうが良いか
+今回のdocker-compose を利用することで、結果的にLaradock から離脱するような形になってしまいました。果たしてLaradock から離れることは判断として正しかったのか？それは未だにわかっていません。しかし今回のケースではシンプルなLEMP 環境があれば充分であったためLaradock はオーバーキルな状態にありました。またLaradock は公式のドキュメントどおりに使うにはとても良いのですが、その中に独自のPython 環境を入れようとしたりすると結局は自分の手でカスタマイズすることが多くなっていき、あまり恩恵を感じることがありませんでした。また今までは各メンバPC 上でビルドを走らせることによりビルドを実行した日時によって内部の細かいパッケージ等のバージョンが微妙に異なるようになったりすることで、各メンバに対して同一なイメージを配布することはできていませんでした。そして考えた結果、自分でDockerfile を組んでイメージを作成し、更にDocker Automated Builds を使うことでメンバのビルド日時や環境に依存すること無く、同一な開発環境イメージを各メンバの手元に配布することができるようになりました。
+
+どちらが正解かはわかりませんが、確実に言えることはシンプルなLEMP 環境であれば自作のDocker イメージでも充分に開発に耐えられることです。一方で今後アプリケーションに高度な仕様が出てきた時にRedis と組み合わせたりメール送信サーバと組み合わせたりといったものが出てきた場合、またLaradock に戻ってくるといった選択は充分にありえるでしょう。
 
 =={sec-ext1} デプロイ
 AWS、Heroku、GCP、そして自宅サーバ
-
-=={sec-ext1} Laradock を脱却してDocker Automated Builds の活用してみよう
-まずはローカルでDockerfile を作成してビルドしよう。
-Python 環境等の独自のカスタマイズが発生する場合は脱却するのもあり。
-
-=={sec-ext1} Dcoker Hub でOrganization を作成しよう
-Docker イメージをpush する場所を作成する。
-
-=={sec-ext1} Automated Builds で
-他の人のPC 環境に依存しないビルドの強み。
 
 =={sec-ext1} CI
 CircleCI、TravisCI
