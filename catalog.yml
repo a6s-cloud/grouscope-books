@@ -4,9 +4,9 @@ PREDEF:
 
 CHAPS:
   - chap01.re
+  - chap01-2.re
   - chap02.re
   - chap03.re
-  - chap04.re
   - chap05.re
   - chap06.re
   - chap01-starter.re
