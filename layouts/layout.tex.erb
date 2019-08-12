@@ -45,7 +45,11 @@
 \usepackage{suffix}
 \usepackage[T1]{fontenc}\usepackage{textcomp}%T1/TS1
 \usepackage{lmodern}
+<%- if ! ENV['STARTER_DRAFT'].to_s.empty? || @config['starter']['draft'] -%>
+\usepackage[dvipdfmx,draft]{graphicx}
+<%- else -%>
 \usepackage[dvipdfmx]{graphicx}
+<%- end -%>
 \usepackage[dvipdfmx,table]{xcolor}%requires colortbl, array
 \usepackage{framed}
 \usepackage{wrapfig}
@@ -351,7 +355,7 @@
 <%-   end -%>
 <%- end -%>
 
-\renewcommand{\chaptermark}[1]{{}}
+%\renewcommand{\chaptermark}[1]{{}}
 \frontmatter
 
 %%% originaltitle
@@ -372,10 +376,10 @@
 \tableofcontents
 <%- end -%>
 
-\renewcommand{\chaptermark}[1]{\markboth{\prechaptername\thechapter\postchaptername~#1}{}}
+%\renewcommand{\chaptermark}[1]{\markboth{\prechaptername\thechapter\postchaptername~#1}{}}
 \mainmatter
 <%= @input_files["CHAPS"] %>
-\renewcommand{\chaptermark}[1]{\markboth{\appendixname\thechapter~#1}{}}
+%\renewcommand{\chaptermark}[1]{\markboth{\appendixname\thechapter~#1}{}}
 \reviewappendix
 <%= @input_files["APPENDIX"] %>
 

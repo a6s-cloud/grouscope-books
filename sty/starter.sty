@@ -5,33 +5,36 @@
 %%%
 
 
+
 %%% 引数が空かどうか調べるマクロ
 \newcommand{\ifempty}[1]{%
-  \def\temp{#1}%       % \ifx#1\empty とはできないので、一時マクロを定義
+  \edef\temp{#1}%      % \ifx#1\empty とはできないので、一時マクロを定義
   \ifx\temp\empty%     % \empty は他の言語でいえば空文字列に相当
 }
 
-%%% 文字列比較
+%%% 文字列比較をするマクロ
 \newcommand\ifstreq[2]{
   \edef\@tempa{#1}%
   \edef\@tempb{#2}%
-  \ifx\@tempa\@tempb%  % \ifx#1#2 とはできないことに注意
+  \ifx\@tempa\@tempb%  % \ifx#1#2 とはできないことに注意（TeXの仕様）
 }
+
 
 
 %%% \starter@target を調べて各種変数を設定する
 \iffalse
 \else\ifstreq{\starter@target}{pbook}    % pbook (printing book) なら
-  \def\starter@colormode{mono}           % 白黒
+  \def\starter@colormode{mono}           %   白黒
 \else\ifstreq{\starter@target}{ebook}    % ebook (electric book) なら
-  \def\starter@colormode{rgb}            % カラー
-  %\def\starter@colormode{cmyk}
+  \def\starter@colormode{rgb}            %   カラー (RGB)
+  %\def\starter@colormode{cmyk}          %   カラー (CMYK)
 \else\ifstreq{\starter@target}{tablet}   % tablet なら
-  \def\starter@colormode{rgb}            % カラー
-  %\def\starter@colormode{cmyk}
-\else
-  \def\starter@colormode{mono}           % 白黒
+  \def\starter@colormode{rgb}            %   カラー (RGB)
+  %\def\starter@colormode{cmyk}          %   カラー (CMYK)
+\else                                    % それら以外なら
+  \def\starter@colormode{mono}           %   白黒
 \fi
+
 
 
 %%%
@@ -83,11 +86,10 @@
 \fi%\fi\fi
 
 
-%%% 目次やリンクは、デフォルトでは赤くなり印刷には向かないので、黒くする。
-%%% ただし電子書籍用PDFでは、リンクであることがわかるよう色をつける。
-\hypersetup{colorlinks=true,linkcolor=starter@linkcolor,urlcolor=starter@linkcolor}  % カラー
-%\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black} % 黒（印刷用）
+%%% 目次やリンクの色を指定する。印刷用なら黒にする。
+\hypersetup{colorlinks=true,linkcolor=starter@linkcolor,urlcolor=starter@linkcolor}
 %\hypersetup{colorlinks=false}   % リンク機能をオフにする
+
 
 
 %%% 「@<strong>{ ... }」を太字のゴシック体にする（「@<b>{ ... }」は明朝体のまま）。
@@ -101,33 +103,86 @@
 \usepackage{ulem}
 \renewcommand{\reviewstrike}[1]{\sout{#1}}
 %\usepackage{jumoline}
-%\renewcommand{\reviewstrike}[1]{\Middleline{#1}}
+%\renewcommand{\reviewstrike}[1]{\Midline{#1}}  % \seqsplit{}と相性が悪い？
+
+%%% 目立たせない（「@<strong>{}」の反対）
+\newcommand{\starterweak}[1]{%
+  \textcolor{gray}{#1}%
+}
 
 
-%%% ソースコードの表示で使う等幅フォントを変更（好きなのを1つだけ選択）。
+
+%%% プログラムやターミナルの表示で使う等幅フォント。
 %%% 参考： http://www.tug.dk/FontCatalogue/typewriterfonts.html
-%%% Starterでは、//list と //cmd にberamonoを、//terminal にnarrow inconsolataを使う。
-%%% （Tips: inconsolataのnottを外し、beramonoの行をコメントアウトすると、
-%%%   //list や //cmd の表示も幅が狭い等幅フォントが使われるようになる。）
-%\usepackage{courier}     % 太字がとても目立つ、「1 l」や「0 O」が見分けにくい
-%\usepackage[scale]{nimbusmononarrow}  % 太字が効かない、「1 l」や「0 O」が見分けにくい
-\usepackage[scaled]{beramono}  % 「0」に点が入る、「'」「`」が見分けにくい
-%\usepackage[varl,varqu,mono]{inconsolata}  % 「0」に斜線が入る、varlつけると「1 l」が見分けやすい
-\usepackage[nott,varl,varqu,mono,narrow]{inconsolata}  % 上と同じだが幅が狭い、nottつけるとdefault fontを変更しない
+
+%%% 等幅フォントを読み込む
+\newcommand\starter@loadttfont[2]{%       % #1: 等幅フォント名、#2: 実行するコード
+  \ifstreq{\starter@program@ttfont}{#1}   % プログラム用等幅フォント名が第1引数と一致したら
+    #2                                    % 第2引数を実行
+  \fi
+  \ifstreq{\starter@terminal@ttfont}{#1}  % ターミナル用等幅フォント名が第1引数と一致したら
+    #2                                    % 第2引数を実行
+  \fi
+}
+
+%%% lmodern … LaTeXのデフォルト。1とl、0とOが見分けにくい。太字が目立たない。
+\starter@loadttfont{lmodern}{
+  \usepackage{lmodern}
+}
+%%% lmodern-lighttt … 細字にするオプションをつけたlmodern。太字が目立つ。
+\starter@loadttfont{lmodern-lighttt}{
+  %\usepackage[lighttt]{lmodern}
+  \usepackage{lmodern}
+  \let\lmtt@use@light@as@normal\@empty    % enable 'lighttt' option
+}
+%%% courier … 文字が細い。文字幅が広め。1とl、0とOが見分けにくい。
+\starter@loadttfont{courier}{
+  \usepackage{courier}
+}
+%%% beramono … 1とl、0とOが見分けやすい。「'」と「`」が見分けにくい。
+\starter@loadttfont{beramono}{
+  \usepackage[scaled]{beramono}
+}
+%%% inconsolata … 文字幅が狭め。0と0が見分けやすい、varlつけると1とlが見分けやすい。
+\starter@loadttfont{inconsolata}{
+  \usepackage[varl,varqu,mono]{inconsolata}
+}
+%%% inconsolata-narrow … 文字幅をより狭くするオプションをつけたinconsolata。
+\starter@loadttfont{inconsolata-narrow}{
+  %\usepackage[varl,varqu,mono,narrow]{inconsolata}
+  \usepackage[varl,varqu,mono]{inconsolata}
+  \def\zifour@narrow{n}                   % enable 'narrow' option
+}
+
+%%% 指定した等幅フォントを有効にする
+\newcommand{\starter@enablettfont}[1]{
+  \iffalse
+  \else\ifstreq{#1}{beramono}           \renewcommand{\ttdefault}{fvm}
+  \else\ifstreq{#1}{inconsolata}        \renewcommand{\ttdefault}{zi4}
+  \else\ifstreq{#1}{inconsolata-narrow} \renewcommand{\ttdefault}{zi4}
+  \else\ifstreq{#1}{lmodern}            \renewcommand{\ttdefault}{lmtt}
+  \else\ifstreq{#1}{lmodern-lighttt}    \renewcommand{\ttdefault}{lmtt}
+  \else\ifstreq{#1}{courier}            \renewcommand{\ttdefault}{pcr}
+  \fi
+}
+
+%%% デフォルトの等幅フォントとしてプログラム用（//list）のものを使う
+\starter@enablettfont{\starter@program@ttfont}
+
 
 
 %%% 箇条書き（順序なし）
 \newenvironment{starteritemize}{%
-  \starter@itemlist@margin%          % 余白を減らす
+  \starter@itemlist@margin%        % 余白を減らす
   \begin{itemize}%
 }{%
   \end{itemize}%
-  \starter@itemlist@margin%          % 余白を減らす
+  \starter@itemlist@margin%        % 余白を減らす
 }
 \newcommand{\starter@itemlist@margin}{%
-  \ifnum\@itemdepth=0%              % 入れ子ではない場合だけ
+  \ifnum\@itemdepth=0%             % 入れ子ではない場合だけ
     \ifnum\@enumdepth=0%
-      \vspace{-0.50\topsep}%        % 余白を半分に減らす
+      \vspace{-0.50\topsep}%       % 余白を半分に減らす
     \fi%
   \fi%
 }
@@ -148,11 +203,14 @@
 %\renewcommand{\labelitemiii}{{\small$\bigstar$}}   % 深さ3段目：「*」→星形へ
 
 
+
 %%% 図や表のキャプションを見映えよくする
-\let\original@makecaption\@makecaption  % jsbook.clsでの定義を保存し、あとで再利用
-\renewcommand{\@makecaption}[2]{%       % 図や表のキャプション
-  \original@makecaption{\starter@caption@font\starter@caption@prefix #1}{\starter@caption@font #2}
-}
+\ifx\starter@caption@pretty\empty\else
+  \let\original@makecaption\@makecaption  % jsbook.clsでの定義を保存し、あとで再利用
+  \renewcommand{\@makecaption}[2]{%       % 図や表のキャプション
+    \original@makecaption{\starter@caption@font\starter@caption@prefix #1}{\starter@caption@font #2}
+  }
+\fi
 %\usepackage{amssymb}   % $\blacktriangle$ や $\blacktriangledown$ に必要
 \newcommand{\starter@caption@font}{\gtfamily\sffamily}  % キャプションをゴシック体に
 \newcommand{\starter@caption@symbolup}{▲}    % または $\blacktriangle$
@@ -160,11 +218,13 @@
 \newcommand{\starter@caption@symbol}{\starter@caption@symboldown} % デフォルトは「▼」
 \newcommand{\starter@caption@prefix}{%        % キャプションの接頭辞
   \textcolor{starter@captioncolor}{\starter@caption@symbol}%  % 「▲」や「▼」に色をつける
+  \,%                                        % 接頭辞の直後に少し隙間を空ける
 }
 \renewcommand{\reviewimagecaption}[1]{{%     % 図のキャプションは図の下につくので、
   \def\starter@caption@symbol{\starter@caption@symbolup}%  % 接頭辞を「▼」から「▲」に変更
   \caption{#1}%
 }}
+
 
 
 %%% 「//list」や「//cmd」のキャプション（説明）の直後で改ページされるのを防ぐ
@@ -176,8 +236,12 @@
   \starter@codeblock@vspace%   % 縦方向の余白を入れる
   \noindent%                   % キャプションをインデントしない
   {%
-    \small%                   % キャプションを小さくする
-    \starter@caption@font\starter@caption@prefix% % ゴシック体に変更、接頭辞をつける
+    \ifx\starter@caption@small\empty\else%
+      \small%                  % キャプションの文字を小さくする
+    \fi%
+    \ifx\starter@caption@pretty\empty\else%
+      \starter@caption@font\starter@caption@prefix% ゴシック体に変更、接頭辞をつける
+    \fi%
     #1%                        % キャプションを表示
   }%
   \par%
@@ -193,6 +257,7 @@
 \renewcommand{\reviewboxcaption}[1]{\starter@codeblock@caption{#1}}  % for //box
 
 
+
 %%% コードブロック（プログラムリストやターミナル）
 \newenvironment{starter@codeblock}{%
   %\vspace{-\lastskip}%
@@ -203,10 +268,10 @@
   \vspace{-\baselineskip}%
   \starter@codeblock@vspace%
   \begin{alltt}%                   % verbatim環境は使わない
-    \small%                        % コードのフォントサイズを小さくする
     \setlength{\baselineskip}{0.85\baselineskip}%
     \MakeFramed{%
       \advance\hsize-\width%       % ブロック幅をテキスト幅と同じにする（左右に広げない）
+      \addtolength{\hsize}{\starter@codeblock@widen}% ほんの少しだけ表示幅を広げる
       \advance\hsize-2\starter@codeblock@sidemargin% ノート環境では左右に余白を空ける
       \FrameRestore%
     }%
@@ -222,40 +287,51 @@
 \newlength{\starter@codeblock@sidemargin}  % コードブロックの左右の余白幅（ノート環境で使う）
 \setlength{\starter@codeblock@sidemargin}{0pt}
 
+\newcommand{\starter@codeblock@widen}{0.0mm}     % コードブロックを少しだけ広げる幅
+
 
 %%% コードブロック用のキャプション
 \newcommand\startercodeblockcaption[1]{%
   \starter@codeblock@caption{#1}%
 }
 
-
 %%% コードブロック用の行番号
-\newcommand{\starterlineno}[1]{%
-  \makebox[0pt][r]{%
-    \small\rmfamily\textcolor{gray}{#1}%
-    \hspace{0.8\FrameSep}%
+\newcommand{\starterlineno}[1]{%             % #1: 行番号
+  \makebox[0pt][r]{%                         % 右揃えにする
+    \small\rmfamily%                         % 文字を小さくし、ローマン体を使う
+    \textcolor{gray}{#1}%                    % 文字色をグレーにする
+    \hspace{0.8\FrameSep}%                   % 少しスペースを空ける
   }%
 }
 
-
-%%% プログラム（//program[label][caption][optionstr]{ ... //}）
+%%% プログラム（//list[label][caption][optionstr]{ ... //}）
 \newenvironment{starterprogram}{%
-  \colorlet{shadecolor}{starter@programcolor}%
+  %\color{black}%                                   % 文字色を指定
+  \colorlet{shadecolor}{starter@programcolor}%      % 背景色を指定
+  \starter@enablettfont{\starter@program@ttfont}%   % 等幅フォントを指定
+  \ifstreq{\starter@program@fontsize}{small}%
+    \small%                                         % 文字を少し小さくする
+  \fi%
+  \edef\starter@codeblock@widen{\starter@program@widen}% 幅をほんの少し広げる
   \begin{starter@codeblock}%
 }{%
   \end{starter@codeblock}%
 }
-
 
 %%% ターミナル（//terminal[label][caption][optionstr]{ ... //}）
 \newenvironment{starterterminal}{%
-  \color{white}%
-  \colorlet{shadecolor}{starter@terminalcolor}%
-  \renewcommand{\ttdefault}{zi4}%   % 幅の狭い等幅フォント(narrow inconsolata)を使う
+  \color{white}%                                    % 文字色を指定
+  \colorlet{shadecolor}{starter@terminalcolor}%     % 背景色を指定
+  \starter@enablettfont{\starter@terminal@ttfont}%  % 等幅フォントを指定
+  \ifstreq{\starter@terminal@fontsize}{small}%
+    \small%                                         % 文字を少し小さくする
+  \fi%
+  \edef\starter@codeblock@widen{\starter@terminal@widen}% 幅をほんの少し広げる
   \begin{starter@codeblock}%
 }{%
   \end{starter@codeblock}%
 }
+
 
 
 %%% 長い行を自動的に折り返す（コードブロック内で使用）
@@ -271,7 +347,8 @@
   }{}%
 }
 \newcommand{\starter@fold@char}{%
-  \small\mdseries\textcolor{gray}{\char"0F}% % 小さいグレーの '>'
+  \mdseries\rmfamily%                        % 通常の太さのローマン体
+  \textcolor{gray}{\char"0F}%                % グレーの '>'
   %\tiny\textcolor{gray}{\raisebox{0.5mm}{$\blacktriangleright$}}% % 右向きの三角形
 }
 \newcommand{\starter@fold@contchar}{         % 折り返し後の継続行の頭につける記号
@@ -289,6 +366,7 @@
   \\%                                        % 改行
   \makebox[\starter@fold@indentwidth]{}%     % 折返しの直後にインデントを挿入
 }
+
 
 
 %%% 行末 (End Of Line) を表す記号
@@ -324,17 +402,6 @@
 }
 
 
-%% 右起こし（奇数ぺージ始まり）にしない場合でも、目次と第1章との間に
-%% 空白ページが入ることがあるので、修正する。
-\if@openright\else\if@openleft\else  % 右起こしでも左起こしでもない場合だけ、
-  \renewcommand\mainmatter{%         % 本文の開始を表すコマンドを再定義する。
-    %\pltx@cleartooddpage            % 削除
-    \clearpage                       % 追加
-    \@mainmattertrue
-    \pagenumbering{arabic}
-  }
-\fi\fi
-
 
 %%% 章 (Chapter) の番号とタイトルと上下の余白を表示する
 %\def\@makechapterhead#1{%    (jsbook.clsでのオリジナル定義)
@@ -356,7 +423,7 @@
   \starter@chapterhead{#1}%                 % 章タイトルを組み立てる
   \vspace{2\baselineskip}%                  % 章タイトルのあとに余白を空ける
 }
-%% 装飾する・しないを判断して、章の番号とタイトルを表示（上下の余白は除く）
+%%% 装飾する・しないを判断して、章の番号とタイトルを表示（上下の余白は除く）
 \newcommand{\starter@chapterhead}[1]{%
   {%                                        % フォント変更などの影響範囲を限定する。
     \setlength{\parindent}{0pt}%            % 段落の最初のインデントをなしに。
@@ -383,7 +450,7 @@
     \centering%                             % 中央寄せ
   \fi%
 }
-%% 装飾つきで章番号とタイトルを表示
+%%% 装飾つきで章番号とタイトルを表示
 \ifstreq{\starter@chapter@decoration}{underline}
   \newcommand{\starter@chapterhead@decorated}[2]{%  % #1: 章番号、#2: 章タイトル
     \starter@chaphead{#1}{#2}%              % 章番号と章タイトルを出力
@@ -403,7 +470,7 @@
     \starter@chaphead{#1}{#2}%              % 章番号と章タイトルを出力
   }
 \fi
-%% 装飾なしで章番号とタイトルを表示（まえがきや目次用）
+%%% 装飾なしで章番号とタイトルを表示（まえがきや目次用）
 \newcommand{\starter@chapterhead@plain}[1]{%  % #1: 章タイトル
   \starter@chaphead{}{#1}%                  % 章タイトルだけを出力
   \ifstreq{\starter@chapter@decoration}{underline}%
@@ -411,7 +478,7 @@
     \textcolor{starter@chaptercolor}{\rule{\textwidth}{0.2pt}}% 章タイトルに細い下線
   \fi%
 }
-%% 章番号と章タイトルを表示
+%%% 章番号と章タイトルを表示
 \newcommand{\starter@chaphead}[2]{%         % #1: 章番号、#2: 章タイトル
   \ifempty{#1}\else%
     \starter@chaphead@number{#1}%           % 章番号
@@ -419,16 +486,16 @@
   \fi%
   \starter@chaphead@title{#2}%              % 章タイトル
 }
-%% 章番号を表示
+%%% 章番号を表示
 \newcommand{\starter@chaphead@number}[1]{%  % #1: 章番号
   %{\huge\headfont \@chapapp #1\@chappos}%  % jsbook.clsのデフォルト
   {\headfont\LARGE\@chapapp{\HUGE #1}\@chappos}% 番号を大きくして出力
 }
-%% 章タイトルを表示
+%%% 章タイトルを表示
 \newcommand{\starter@chaphead@title}[1]{%   % #1: 章タイトル
   {\Huge\headfont #1}%                      % 大きいサイズ、ゴシック体で出力
 }
-%% 章番号と章タイトルの間のスペース
+%%% 章番号と章タイトルの間のスペース
 \newcommand{\starter@chaphead@spacer}{%
   \ifx\starter@chapter@oneline\empty%       % 章番号とタイトルで2行のとき
     \par\vspace{1.5zw}%                     % 縦方向に余白を空ける
@@ -438,13 +505,17 @@
 }
 
 
+
 %%% 節 (Section) タイトルの上下のスペースを調整（jsbook.clsからコピーして変更）
 \renewcommand{\section}{%
   \edef\@newpage{\starter@section@newpage}% % Yなら節ごとに改ページする、空ならしない
   \def\@beforeSkip{1.3\Cvs \@plus.5\Cdp \@minus.2\Cdp}%  % 節タイトル直前の空白
   \def\@afterSkip{0.9\Cvs \@plus.3\Cdp}%    % 節タイトル直後の空白
   \ifx\@newpage\empty\else%                 % 節ごとに改ページするときは
-    \def\@beforeSkip{0pt}%                  % 節タイトル直前の空白をゼロにする
+    \def\@beforeSkip{0pt}%                  %   節タイトル直前の空白をゼロにする
+    \ifnum\value{section}>0%                %   章の最初の節でなければ
+      \clearpage%                           %     改ページする
+    \fi%
   \fi%
   %% 節タイトルを開始
   \@startsection{section}{1}{\z@}%
@@ -452,12 +523,9 @@
   {\@afterSkip}%                            % 後アキ
   {%
     %% 節ごとに改ページする場合
-    \ifx\@newpage\empty\else%               % 変数の値が空でないなら
-      \ifnum\value{section}>1%              %   章の最初の節でなければ
-        {\clearpage}%                       %     改ページする
-        %\clearpage%                        %     （'{ }' なしだと最初の節が表示されない場合がある）
-      \else%                                %   章の最初の節なら
-        \vskip \@beforeSkip\relax%          %     スペースを空ける
+    \ifx\@newpage\empty\else%               % 節ごとに改ページするときは
+      \ifnum\value{section}=1%              %   章の最初の節なら
+        \vskip 0.5\Cvs \@plus.5\Cdp \@minus.2\Cdp\relax% スペースを空ける
       \fi%
     \fi%
     %% 節タイトルの表示設定
@@ -500,7 +568,8 @@
 \fi
 
 
-%%% 小節 (Subsection) のデザインを変更（jsbook.clsからコピーして変更）
+
+%%% 項 (Subsection) のデザインを変更（jsbook.clsからコピーして変更）
 \renewcommand{\subsection}{%
   \edef\@decoration{\starter@subsection@decoration}%    % 'none' or 'symbol'
   \@startsection{subsection}{2}{\z@}%
@@ -516,6 +585,31 @@
       \fi%
     }%
 }
+
+
+
+%%% ページ先頭なら節や項のタイトル前にスペースを入れない
+\ifx\starter@section@notopmargin\empty\else
+  %% ハック：スライドモードをonにするとページ先頭でのスペースが入らない
+  \let\original@startsection=\@startsection   % コマンドを保存
+  \def\@startsection#1#2#3#4#5#6{%            % コマンドを上書き
+    \@slidetrue%                              % スライドモードをonにする
+    \original@startsection{#1}{#2}{#3}{#4}{#5}{#6}% 元のコマンドを実行
+  }
+  %% \@startsection の最後で実行されるマクロ（その1）を上書き
+  \let\original@sect=\@sect                   % コマンドを保存
+  \def\@sect#1#2#3#4#5#6[#7]#8{%              % コマンドを上書き
+    \@slidefalse%                             % スライドモードをoffに戻す
+    \original@sect{#1}{#2}{#3}{#4}{#5}{#6}[{#7}]{#8}% % 元のコマンドを実行
+  }
+  %% \@startsection の最後で実行されるマクロ（その2）を上書き
+  \let\original@ssect=\@ssect                 % コマンドを保存
+  \def\@ssect#1#2#3#4#5{%                     % コマンドを上書き
+    \@slidefalse%                             % スライドモードをoffに戻す
+    \original@ssect{#1}{#2}{#3}{#4}{#5}%      % 元のコマンドを実行
+  }
+\fi
+
 
 
 %%% 目次の上余白を狭める（jsbook.clsからコピー）
@@ -545,7 +639,6 @@
   \if@restonecol\twocolumn\fi
 }
 
-
 %%% 目次での章 (Chapter) 直後での改ページを防ぐ
 \let\original@l@chapter=\l@chapter                % もとの定義を保存
 \renewcommand*{\l@chapter}[2]{{%
@@ -574,24 +667,41 @@
 }}
 
 
-%%% 右起こし（右ページ始まり）のときに、奥付が右ページにこないようにする。
+
+%%% 奥付 (colophon) が最終ページになるよう調整する。
 %%% （奥付が右ページだと、次ページである最終ページが空ページになるため）
 \renewcommand{\reviewcolophon}[0]{%
-  \clearpage
-  \pltx@cleartoleftpage   %% copied from jsbook.sty
+  \clearpage                     % 改ページ
+  \ifstreq{\starter@target}{tablet}% タブレット向けなら何も調整しない
+  \else\if@openright             % \documentclass で openright が指定されていれば
+    \pltx@cleartoleftpage        % 左ページ（偶数ページ）になるよう調整する
+  \else\if@openleft              % \documentclass で openleft が指定されていれば
+    \pltx@cleartorightpage       % 右ページ（奇数ページ）になるよう調整する
+  \fi\fi\fi
 }
+
+%%% 右起こし（奇数ぺージ始まり）にしない場合でも、目次と第1章との間に
+%%% 空白ページが入ることがあるので、修正する。
+\if@openright\else\if@openleft\else  % 右起こしでも左起こしでもない場合だけ、
+  \renewcommand\mainmatter{%         % 本文の開始を表すコマンドを再定義する。
+    %\pltx@cleartooddpage            % 削除
+    \clearpage                       % 追加
+    \@mainmattertrue
+    \pagenumbering{arabic}
+  }
+\fi\fi
+
 
 
 %%% ページヘッダーの形式を変更（fancyhdr.styを使用）
 \newcommand{\pageheaderfont}{\small\gtfamily\sffamily}           % ゴシック体
 %\newcommand{\pageheaderfont}{\small\gtfamily\sffamily\bfseries} % ゴシック体、太字
-%% 紙書籍のような右起こしの場合（左ページに章タイトル、右ページに節タイトル）
+%%% 紙書籍のような右起こしの場合（左ページに章タイトル、右ページに節タイトル）
 \lhead[\pageheaderfont\leftmark]{}
 \rhead[]{\pageheaderfont\rightmark}
-%% タブレット向けのような両起こしの場合（両ページに章タイトルと節タイトル）
+%%% タブレット向けのような両起こしの場合（両ページに章タイトルと節タイトル）
 %\lhead{\pageheaderfont\leftmark}
 %\rhead{\pageheaderfont\rightmark}
-
 
 %%% ページ番号のスタイル
 %\newcommand{\pagenumberstyle}{\thepage}                   % 例：「1」
@@ -613,6 +723,27 @@
   \renewcommand{\headrulewidth}{0pt}  % ページヘッダの区切り線をなくす
   \renewcommand{\footrulewidth}{0pt}  % ページフッタの区切り線をなくす
 }
+
+%%% ページヘッダを構成する要素の定義を jsbook.cls からコピーして元に戻す
+\def\chaptermark#1{%
+  \markboth{%
+    \ifnum \c@secnumdepth >\m@ne%
+      \if@mainmatter%
+        \if@omit@number\else%
+          \@chapapp\thechapter\@chappos\hskip1zw%
+        \fi%
+      \fi%
+    \fi%
+    #1%
+  }{}%
+}%
+\def\sectionmark#1{%
+  \markright{%
+    \ifnum \c@secnumdepth >\z@ \thesection \hskip1zw\fi%
+    #1%
+  }%
+}%
+
 
 
 %%% 章 (Chapter) のタイトルを独立したページにするコマンド。
@@ -663,11 +794,18 @@
 }
 
 
+
 %%% 現在位置に画像が入りきらない場合、画像は次のページに回される。
 %%% その際、現在位置に大きなスペースが空くのを防ぐために、
 %%% 後続のテキストを現在位置に流し込むようにする。
-%\renewenvironment{reviewimage}[1][H]{%  % 現在位置にスペースが空く（要float.sty）
-\renewenvironment{reviewimage}[1][h]{%  % 現在位置に後続テキストを流し込む
+\renewenvironment{reviewimage}[1][]{%
+  \edef\@tempA{#1\starter@image@position}% 引数があればそれが優先して使われ、なければ「image_option:」の値が使われる
+  \expandafter\starter@image\@tempA%     % 先に引数を展開してから \begin{starter@image} を実行
+}{%
+  \endstarter@image%                     % \end{starter@image} と同じ
+}
+%
+\newenvironment{starter@image}[1]{%
   \vspace{0.8zw}      % 画像上の余白を調整（少し増やす）
   \begin{figure}[#1]
     %\begin{center}   % center環境は余分な余白がつくので使わない
@@ -687,23 +825,26 @@
 }
 
 
+
 %%% コラムが複数のページにまたがるとき、次のページに続いていることが
 %%% わかるようにするために、ページ境界では上下の線を引かない。
 \renewenvironment{reviewcolumn}{%
-     %\begin{framed}
-     \begin{oframed}
-  }{%
-     %\end{framed}
-     \end{oframed}
-  \vspace{2zw}}
+  %\begin{framed}%        % original
+  \begin{oframed}%
+}{%
+  %\end{framed}%          % original
+  \end{oframed}%
+  \vspace{2zw}%
+}
 
 %%% コラムのタイトルを変更する
 \renewcommand{\reviewcolumnhead}[2]{%
-  %{\noindent\large ■コラム: #2}%  % オリジナル
+  %{\noindent\large ■コラム: #2}%  % original
   %{\noindent\large\gtfamily\sffamily\bfseries ■コラム：#2}%  % 太字のゴシック
   {\noindent\large\gtfamily\sffamily\bfseries 【コラム】#2}%  % 太字のゴシック
   \vspace{2mm}%
 }
+
 
 
 %%% @<hd>{} や @<subsec>{} で、節や項へのリンクを作成
@@ -714,12 +855,14 @@
 }
 
 
+
 %%% 導入文（リード文）
 \newenvironment{starterlead}{%
   \begin{quotation}%     % または \begin{abstract}
 }{%
   \end{quotation}%       % または \end{abstract}
 }
+
 
 
 %%% 章 (Chaper) の概要
@@ -739,6 +882,7 @@
   \end{list}%
   \vspace{\baselineskip}%
 }
+
 
 
 %%% 引用（複数段落に対応）
@@ -849,11 +993,13 @@
 %}}
 
 
+
 %%% 画像のまわりに線をつける
 \newcommand{\starterimageframe}[1]{{%
   \setlength{\fboxrule}{0.1pt}%
   \fcolorbox{lightgray}{white}{#1}%
 }}
+
 
 
 %%% 出力結果（Starterのドキュメントで使用）
@@ -870,22 +1016,19 @@
 }
 
 
-%%
-%% 黒ヌキ（白い背景に黒い文字）
-%%
-%% 使い方: \startercursor{テキスト}
-%%
+
+%%% 黒ヌキ（白い背景に黒い文字）
+%%%
+%%% 使い方: \startercursor{テキスト}
 \newcommand*{\startercursor}[1]{%
   \starter@bgcolor[black]{white}{#1}%    % 文字を黒、背景を白にして表示
   %\mybgcolor{white}{\textcolor{black}{#1}}%
 }%
 
-%%
-%% 背景色（と文字色）をつける
-%%
-%% 使い方: \starter@bgcolor{white}{テキスト}
-%%      or \starter@bgcolor[black]{white}{テキスト}
-%%
+%%% 背景色（と文字色）をつける
+%%%
+%%% 使い方: \starter@bgcolor{white}{テキスト}
+%%%      or \starter@bgcolor[black]{white}{テキスト}
 \newcommand{\starter@bgcolor}[3][]{% % #1: 文字色(default: 空), #2: 背景色, #3: テキスト
   \settowidth{\tmp@width}{#3}%       % 幅
   \settodepth{\tmp@depth}{g}%        % 深さ
@@ -907,9 +1050,7 @@
   \fi%
 }
 
-%% 長さを表す変数 (control sequence) を宣言
+%%% 長さを表す変数 (control sequence) を宣言
 \newlength{\tmp@width}%    % 幅
 \newlength{\tmp@height}%   % 高さ
 \newlength{\tmp@depth}%    % 深さ
-
-
