@@ -509,12 +509,11 @@ file.txt-e
 各メンバのローカル環境で実行するbash スクリプトに限界を感じ始めていた頃、簡単にビルド済みのイメージを公開してメンバ間で共有する仕組みは無いかと考えていた所、Docker Automated Build を思い出しました。このDocker Automated Build の構築について考えていくことにします。また今回Docker Automated Builds を使用するに当たりLaravel の利用は一旦やめることにしました。理由としてはDocker イメージの構成をよりシンプルにして我々側でイメージの管理をやりやすくするためです。
 
 === Docker Automated Builds とは
-Docker Inc が提供するDocker Hubにて、Github やGitbucket 上のリポジトリと同期してリポジトリ内のDockerfile を基に自動ビルドを行なって自動的にイメージを作成して共有してくれるサービスです。これを利用することで開発メンバのPC 上でビルドするスクリプトを廃止することで環境差異による問題を解決するのに一役買うと考えていました。
-
+Docker Inc が提供するDocker Hubにて、Github やGitbucket 上のリポジトリと同期してリポジトリ内のDockerfile を基に自動ビルドを行なって自動的にイメージを作成して共有してくれるサービスです。これを利用することで開発メンバのPC 上でビルドするスクリプトを廃止することができて、環境差異による問題を解決するのに一役買うと考えていました。
 //image[chap05/0021_ImageOfDockerAutomatedBuilds][Docker Automated Builds の流れ][scale=0.80]
 
 === Dockerfile の作成
-Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといった情報を指定することができます。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm、それに対するリバースプロキシサーバとなるnginx とすることにしました。またDB としてMySQL 利用することを考えていましたが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。
+Docker イメージをビルドするためのDockerfile を作成します。Dockerfile はイメージをビルドするための処理や設定を記述するためのファイルです。Dockerfile を我々で管理することでベースとなるDocker イメージはUbuntu かCentOS かそれとも他者が作成したnginx やPHP か、インストールするパッケージは何かといったことを考える必要があります。今回用意するDockerfile はLaravel 実行環境の本体となるphp-fpm、それに対するリバースプロキシサーバとなるnginx にすることにしました。またDB としてMySQL を利用しますが、こちらについては我々がDockerfile を作らなくとも公式のMySQL イメージで事足りると判断したためDockerfile は作成しませんでした。
 
 //image[chap05/0022_GrouscopeImagesOfDockerAutomatedBuilds][grouscope でのDocker イメージ構成][scale=0.80]
 
@@ -531,7 +530,7 @@ RUN apt-get update && \
 COPY default.conf /etc/nginx/conf.d/default.conf
 //}
 
-パッケージをアップグレードして事前に用意したnginx の設定ファイルdefault.conf を置き換えるだけです。default.conf はLaravel コンテナに対してリバースプロキシをするを設定を入れています。
+パッケージをアップグレードして事前に用意したnginx の設定ファイルdefault.conf を置き換えるだけです。default.conf はLaravel コンテナに対してリバースプロキシをする設定を入れています。
 
 //emlist[default.conf(紙面の都合上インデントを変更)]{
 server {
@@ -566,21 +565,16 @@ server {
 //emlist[(1)root ディレクティブ(ドキュメントルートの変更)]{
 root   /var/www/html/a6s-cloud/public;
 //}
-
 注意点としては、このnginx のコンテナ本体にはコンテンツは置かないということです。ドキュメントルートを設定するのは後ほど出てくる
-
 //emlist[(3)fastcgi パラメータSCRIPT_FILENAME の組み立て]{
 fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
 //}
-
-の部分でLaravel コンテナに対して、SCRIPT_FILENAME パラメータとして渡す値を組み立てるためにあります。逆にnginx のドキュメントルートにコンテンツは置かないようにしてください。try_files ディレクティブがindex.php パスを付与しなくなり想定しない動作となってしまいます。これはLaravel のコンテナに対してFast CGI パラメータSCRIPT_FILENAME が渡されるようになり、想定される値は先程設定したroot ディレクティブの値と組み合わされ"/var/www/html/a6s-cloud/public/index.php" となります。この後作成するLaravel コンテナではそのディレクトリにLaravel のコンテンツ及びindex.php を置くように作成する必要があります。あと最後にリバースプロキシ先としてLaravel コンテナを指定することを忘れないようにしてください。
+の部分でLaravel コンテナに対して、SCRIPT_FILENAME パラメータとして渡す値を組み立てるためにあります。逆にnginx のドキュメントルートにコンテンツは置かないようにしてください。try_files ディレクティブがindex.php パスを付与しなくなり想定しない動作となってしまいます。最終的にphp-fpm コンテナに対してFast CGI パラメータSCRIPT_FILENAME が渡されるようになり、想定される値は先程設定したroot ディレクティブの値と組み合わされ"/var/www/html/a6s-cloud/public/index.php" となります。この後作成するphp-fpm コンテナではそのディレクトリ(/var/www/html/a6s-cloud/public)にLaravel のコンテンツ及びindex.php を置くように作成する必要があります。あと最後にリバースプロキシ先としてLaravel コンテナ(php-fpm のエイリアス: laravel)を指定することを忘れないようにしてください。
 //emlist[(2)リバースプロキシパスの設定]{
 fastcgi_pass laravel:9000;
 //}
-nginx コンテナ設定ファイルの主なポイントとしては以上です。
 
 ==== Laravel イメージ
-
 次にLaravel イメージを作成していきましょう。Laravel イメージのDockerfile は以下のようになります。
 
 //emlist[Laravel のDockerfile 一部抜粋(紙面の都合上一部改変)]{
@@ -594,7 +588,6 @@ RUN apt-get update && \
   # ...(略)...
 
 COPY grouscope_entrypoint.sh /opt/grouscope_entrypoint.sh
-COPY install_git_modules.sh /opt/install_git_modules.sh
 COPY wait_until_mysql_started.sh /opt/wait_until_mysql_started.sh
 
 # ...(略)...
@@ -602,7 +595,7 @@ COPY wait_until_mysql_started.sh /opt/wait_until_mysql_started.sh
 CMD ["/opt/grouscope_entrypoint.sh"]
 //}
 
-Laravel イメージはphp-fpm イメージをベースに作成するようにしています。ベースイメージのタグを"php:7.3-fpm" ではなく"php:7.3-fpm-stretch" としているのは2019年07月にあげられたPHP のgd モジュールのissue のためです(https://github.com/docker-library/php/issues/865)。Dockerfile の記載の主な内容としては、既にphp-fpm イメージをベースにしておりPHP の環境はだいたい揃っているので、好みのPHP エクステンションの追加及びgrouscope が依存するPython 製バッチを実行するためのPython をインストールしています。そしてコンテナが起動した時に実行されるentrypoint 用のスクリプトも準備し、そのなかでcomposer install を実行してアプリケーションが依存するパッケージ類をインストールしています。PHP 以外の依存としていくつかのgit submodule とPython のパッケージがありますが、それはcomposer.json のpost-install-cmd で、composer install が実行された後に続けてインストールするコマンドが実行されるようにしています。
+Laravel イメージはphp-fpm イメージをベースに作成します。ベースイメージのタグを"php:7.3-fpm" ではなく"php:7.3-fpm-stretch" としているのは2019年07月にあげられたPHP のgd モジュールのissue のためです(https://github.com/docker-library/php/issues/865)。Dockerfile の記載内容としては、ベースイメージはphp-fpm イメージにしてあります。そして環境をカスタマイズしていきますがPHP の環境はだいたい揃っているので、好みのPHP エクステンションの追加及びgrouscope が依存するPython 製バッチを実行するためにPython をインストールしています。そしてコンテナが起動した時に実行されるentrypoint スクリプトも準備し、そのなかでcomposer install を実行してアプリケーションが依存するパッケージ類をインストールしています。PHP 以外の依存としてgit submodule とPython のパッケージがありますが、それはcomposer.json のpost-install-cmd で、composer install が実行された後に続けてインストールされるようにコマンドを指定しています。
 
 //emlist[composer.json の一部抜粋(紙面の都合上一部改変)]{
   # ...(略)...
@@ -618,7 +611,7 @@ Laravel イメージはphp-fpm イメージをベースに作成するように�
   }
 //}
 
-残りのwait_until_mysql_started.sh というスクリプトファイルはNginx、Laravel、MySQL コンテナと同時に起動した時にMySQL が接続する準備ができていないのにDB 接続をしようとしてエラーが出るのを防ぐために作成しました。このスクリプトを使ってDB が接続できるのを確認してからDB のマイグレーションを実行してアプリケーションが始動するようになっています。
+あとwait_until_mysql_started.sh というスクリプトファイルがイメージにコピーされていますがLaravel、MySQL コンテナと同時に起動した時にMySQL が接続する準備ができていないのにDB のマイグレーションをしようとしてエラーが出るのを防ぐために作成しました。このスクリプトを使ってDB が接続できるのを確認してからDB のマイグレーションを実行してアプリケーションが始動するようになっています。
 
 ==== MySQL イメージ
 次にMySQL ですが、こちらはオフィシャルのMySQL のイメージをそのまま使うことにしました。MySQL のオフィシャルイメージではコンテナを起動した時にコンテナの"/docker-entrypoint-initdb.d" ディレクトリ下に".sh"または".sql"、".sql.gz" という拡張子のファイルがあった場合、それを実行するようになっています。なのでDB の初期化やユーザを作成するSQL 及びその他実行したいコマンドがあればそのディレクトリに入れておけば良いのです。今回は以下のようなSQL ファイルを1 つだけ用意してMySQL コンテナ起動時にDB の初期化とユーザを作成するSQL を格納しておきました。
@@ -628,10 +621,10 @@ CREATE DATABASE IF NOT EXISTS a6s_cloud;
 CREATE USER 'default'@'%' IDENTIFIED WITH mysql_native_password BY 'secret';
 GRANT ALL ON a6s_cloud.* TO 'default'@'%';
 //}
-テーブルを作成する処理が無いですが、それはLaravel コンテナから実行されるマイグレーションコマンド"php artisan" で作成される予定なのでここで作成する必要はありません。むしろテーブル構成や管理のことを考えるとLaravel のマイグレーションに任せたほうが良いでしょう。ここではLaravel がMySQL に接続してDB を操作できるようになるまでの最低限の処理だけにしておきます。
+テーブルを作成する処理が無いですが、それはphp-fpm(Laravel) コンテナから実行されるマイグレーションコマンド"php artisan" で作成される予定なのでここで作成する必要はありません。むしろテーブル構成や管理のことを考えるとLaravel のマイグレーションに任せたほうが良いでしょう。ここではphp-fpm コンテナがMySQL に接続してDB を操作できるようになるまでに必要な最低限の処理だけにしておきます。
 
 === Dockerfile のテストビルド
-Dockerfile が作成できたらテストのために一旦手元でビルドしてみましょう。ビルドするには各Dockerfile があるディレクトリに移動して"docker build" コマンドを叩きます。
+一通りDockerfile の作成が完了したら、一旦手元でビルドしてみましょう。ビルドするには各Dockerfile があるディレクトリに移動して"docker build" コマンドを叩きます。
 
 //cmd{
 $ # grouscope-backend のリポジトリroot にいることを想定
@@ -641,13 +634,12 @@ $ cd ../laravel
 $ docker build -t a6scloud/grouscope-laravel .
 //}
 
-nginx とlaravel のイメージのビルドそに成功しましたでしょうか？これでイメージの準備はほぼ完了です。次はDocker Hub での作業を実施していきます。
+Nginx コンテナと php-fpm コンテナのイメージのビルドに成功しましたでしょうか？これでイメージの準備はほぼ完了です。次はDocker Hub での作業を実施していきます。
 
 === Docker Hub Organization を作成する
-Docker Hub にイメージを公開する場合は私個人のアカウントのリポジトリでも構いませんが今回我々はa6scloud というチームを作っており、せっかくなのでa6scloud という名前のorganization を作ることにしました。この名前は後ほどDocker イメージをpull する時に指定される名前となるので注意してください。今回は既にDocker Hub にアカウントを持っている前提で話を進めていき、また厳密な手順については別の機会に説明するとして今回は概要のみを説明します。
+Docker Hub にイメージを公開する場合は自分個人のアカウントのリポジトリでも構いませんが今回我々はa6scloud というチームを作っており、せっかくなのでa6scloud という名前のorganization を作ることにしました。この名前は後ほどDocker イメージをpull する時に指定される名前となります。今回は既にDocker Hub にアカウントを持っている前提で話を進めていき、また厳密な手順については別の機会に説明するとして今回は概要のみを説明します。
 
-それではDocker Hub にログインしましょう。画面右上のメニューにOrganizations が表示されるのでそれをクリックします。するとOrganizations ページに遷移して"Create Organization +" ボタンが表示されます。
-
+それではDocker Hub にログインしましょう。画面右上のメニューにOrganizations メニューをクリックします。するとOrganizations ページに遷移して"Create Organization +" ボタンが表示されます。
 //image[chap05/0031_CreateDockerOrganizations][Organization 作成ページ][scale=1.0]
 
 それをクリックすると以下のような項目の入力を要求されます。
@@ -659,24 +651,20 @@ Docker Hub にイメージを公開する場合は私個人のアカウントの
  * (Optional) Gravatar Email
  * (Optional) Gravatar URL
 
-Organization Namespace がイメージをpull する時に指定される名前の一部になるので注意するようにしてください(今回はa6scloud という名前にしました)。その他の項目についても、チームのメンバに相談するなどして決めていったほうが良いかもしれません。
-Organization を作成したらOrganization ページから先程作成したOrganization をクリックしましょう。するとデフォルトでowners というチームができていると思います。必要に応じてowner 権限レベルのチームメンバを追加するようにしてください。
-
+Organization Namespace がイメージをpull する時に指定される名前の一部になるので注意するようにしてください(今回はa6scloud という名前にしました)。その他の項目についても、チームのメンバに相談するなどして決めていってください。Organization を作成したらOrganization ページから先程作成したOrganization 名をクリックしましょう。するとデフォルトでowners というチームができていると思います。必要に応じてowner 権限レベルのチームメンバを追加するようにしてください。
 //image[chap05/0032_AddOwnersToOrganizations][Organization ページ][scale=1.0]
 
 Organization を作成したら次はリポジトリを作成しましょう。真ん中の右側にあるRepositories をクリックするとリポジトリ一覧ページに遷移します。
-
 //image[chap05/0033_CreateRepositoriesInOrganization][リポジトリ作成画面][scale=1.0]
 
-ここで"Create Repository" をクリックしてリポジトリを作成します。すると"a6scloud" というプレフィクスに続くリポジトリ名を要求されます。今回作成するのはNginx とLaravel のイメージで、"grouscope-nginx"、"grouscope-laravel" とすることにしました。合計2 つのリポジトリを作成します。リポジトリを作成したら次はAutomated Builds の設定を行ないます。リポジトリを作成したらリポジトリの画面へ移動して上部メニューの"Builds" を選択して"Configure Automated Builds" ボタンをクリックします。
-
+ここで"Create Repository" をクリックしてリポジトリを作成します。すると"a6scloud" というプレフィクスに続くリポジトリ名を要求されます。今回作成するのはNginx とLaravel(php-fpm) のイメージで、"grouscope-nginx"、"grouscope-laravel" とすることにしました。計2 つのリポジトリを作成します。リポジトリを作成したら次はAutomated Builds の設定を行ないます。リポジトリを作成したらリポジトリの画面へ移動して上部メニューの"Builds" を選択して"Configure Automated Builds" ボタンをクリックします。
 //image[chap05/0034_CreateRepositories][リポジトリ作成画面][scale=1.0]
 
 するとBuild に関する設定画面に遷移します。我々が入力する項目としては"SOURCE REPOSITORY"、"AUTOTEST"、"REPOSITORY LINKS"、"BUILD RULES" になります。その中でもBUILD RULES はDockerfile からイメージをビルドするための重要な情報になるので間違え無いように入力してください。内容を間違えてしまうと、たとえローカルのビルドに成功していたとしてもDocker Hub 上でのビルドに失敗する原因になりかねません。今回a6scloud にて作成した"grouscope-nginx" リポジトリについては図のようになります。今回はa6scloud/grouscope-backend GitHub リポジトリのmaster ブランチとtesting ブランチにてpush を検知すると/docker/nginx/Dockerfile ファイルを使ってgrouscope-nginx イメージのビルドが走るように設定をしました。これと同様に"grouscope-laravel" イメージのビルド設定も行うようにしてください(図6.18)。
 
 //image[chap05/0035_ConfigureAutomatedBuilds][Nginx イメージのAutomatedBuilds の設定画面][scale=1.0]
 
-これでDocker Automated Builds の準備は完了です。GitHub にてmaster もしくはtesting ブランチにリソースがpush されるとDocker Hub にて自動ビルドが走りイメージが更新されるようになります。master もしくはtesting GitHub ブランチにリソースをpush 後、Automated Builds が完了すると以下のようなコマンドでイメージをpull できるようになります。
+これでDocker Automated Builds の準備は完了です。GitHub にてmaster もしくはtesting ブランチにリソースがpush されるとDocker Hub にて自動ビルドが走りイメージが更新されるようになります。master もしくはtesting GitHub ブランチにリソースをpush 後、Automated Builds が完了すると以下のようにイメージをpull できるようになります。
 
 //cmd{
 $ # testing タグのa6scloud/grouscope-nginx イメージをpull する例
@@ -686,7 +674,7 @@ $ docker pull a6scloud/grouscope-nginx:latest
 //}
 
 === docker-compose ファイルを作成する
-Docker Automated Builds でイメージも準備できましたのでこれで開発環境のDocker コンテナを起動できます。しかし今回の開発環境は複数のコンテナからなりNginx、Laravel、MySQL のコンテナの起動をもって開発環境の完成とみなされます。ということはそれらコンテナの依存関係を解決する必要があります。これらの依存関係を管理するために今回はdocker-compose を使用します。
+Docker Automated Builds でイメージも準備できましたので開発環境のDocker コンテナを起動する準備ができました。しかし今回の開発環境は複数のコンテナからなりNginx、Laravel、MySQL のコンテナの起動をもって1 つの開発環境の完成とみなされます。ということはそれらコンテナの依存関係を解決する必要があり、それら管理するために今回はdocker-compose を使用することにしました。
 
 docker-compose は複数のコンテナから成るサービスを構築・実行する手順を自動的にし、管理を容易にする機能です。docker-compose を利用するにはdocker-compose コマンドを実行するディレクトリにdocker-compose.yaml ファイルを作成し、その中に利用するイメージとコンテナの情報を定義していきます。今回はgrouscope-backend のroot リポジトリに以下のようなdocker-compose.yaml ファイルを作成しました。
 
@@ -739,7 +727,7 @@ services:
       - a6s
 //}
 
-上記のように合計3 つのコンテナを起動するように指定し、それぞれgrouscope_laravel コンテナはgrouscope_mysql コンテナに依存し、grouscope_nginx はgrouscope_laravel コンテナに依存する関係もdepends_on キーワード宣言し、それぞれが起動するタイミングを定義しています。またボリュームのマウントとしてgrouscope_laravel コンテナはこのdocker-compose.yaml ファイルがあるディレクトリと同じディレクトリをコンテナ上の/var/www/html 上にマウントするようになっており、最終的にアプリケーションの起点となるindex.php が/var/www/html/a6s-cloud/public/index.php としてgrouscope_laravel コンテナから見れるようになります。そして環境変数としてgrouscope_laravel コンテナではMySQL へ接続するユーザ名やDB 名をするようになっており、Twitter からツイート情報を取得してくるためのAPI キーを.env ファイルから読み込んでコンテナの環境変数として反映するようになっています。その他にもホスト側とバインドするポート番号やpull してくるイメージのタグ名も.env ファイルから取得して値を指定する用になっています。docker-compose ではデフォルトでdocker-compose.yaml ファイルと同じディレクトリにある.env ファイルを読み込んでdocker-compose.yaml 内の変数を宣言することができるようになっていて、今回我々のプロジェクトの.env ファイルは以下のように作成しました。
+上記のように合計3 つのコンテナを起動するように定義し、それぞれdepends_on キーワードを用いてgrouscope_laravel コンテナはgrouscope_mysql コンテナに依存し、grouscope_nginx はgrouscope_laravel コンテナに依存する関係性も定義しています。このようにすることによって、それぞれのコンテナが起動するタイミングを調整することができます。またボリュームのマウントとしてgrouscope_laravel コンテナはこのdocker-compose.yaml ファイルがあるディレクトリと同じディレクトリをコンテナ上の/var/www/html 上にマウントするようになっており、最終的にアプリケーションの起点となるindex.php が/var/www/html/a6s-cloud/public/index.php としてgrouscope_laravel コンテナから見れるようになります。そして環境変数としてgrouscope_laravel コンテナではMySQL へ接続するユーザ名やDB 名、Twitter からツイート情報を取得してくるためのAPI キーを.env ファイルから読み込んでコンテナの環境変数として反映するようになっています。その他にもホスト側とバインドするポート番号やpull してくるイメージのタグ名も.env ファイルから取得して値を指定するようになっています。docker-compose ではデフォルトでdocker-compose.yaml ファイルと同じディレクトリにある.env ファイルを読み込んでdocker-compose.yaml 内の変数を定義することができるようになっていて、今回我々のプロジェクトの.env ファイルは以下のように作成しました。
 
 //emlist[.env]{
 NGINX_BIND_PORT=80
@@ -758,7 +746,7 @@ MYSQL_BIND_PORT=3306
 上記のように設定することでdocker-compose.yaml を直接編集するのではなく.env ファイルの方を編集することでコンテナの環境変数やバインドするポート番号等の値を設定することができるようになっています。
 
 === コンテナの起動
-docker-compose の環境ができたところでdocker-compose でコンテナを起動してみましょう。イメージは既にmaster ブランチにリソースがpush されていてAutomated Builds により既に作成されている想定です。
+docker-compose の環境ができたところでdocker-compose でコンテナを起動してみましょう。イメージは既にmaster ブランチにリソースがpush されていてAutomated Builds により作成されているものとします。
 
 //cmd{
 $ docker-compose up
@@ -770,12 +758,12 @@ grouscope_laravel | [DD-MMM-YYYY hh:mm:ss] NOTICE: ready to handle connections
 
 grouscope_nginx、grouscope_laravel、grouscope_mysql コンテナが起動してPHP の依存モジュールをインストールしてDB テーブルのマイグレーションをしてgrouscope_laravel コンテナが最後に起動したログが出力されています。これでgrouscope_backend の起動は完了です。
 
-これで開発環境が完成しました。今までローカルで開発環境のDocker コンテナをカスタマイズするスクリプトをそれぞれのメンバで走らせていたときとは違い、こちらはイメージのビルドが完全にDocker Hub 上で行われるのでメンバのPC の環境に左右されません。またdocker-compose を利用することで1 コマンドで複数コンテナの起動と停止、環境変数等の設定を管理することができるため開発メンバ向けのドキュメントも肥大化すること無くメンテにかかるコストも減らすことができました。
+開発環境が完成しました。今までメンバのローカルでbash スクリプトを走らせていた時とは違い、こちらはイメージのビルドが完全にDocker Hub 上で行われるのでメンバのPC の環境に左右されません。またdocker-compose を利用することで1 コマンドで複数コンテナの起動と停止、環境変数等の設定を管理することができるため、開発メンバ向けの追加のドキュメントを作る必要もなくメンテにかかるコストも減らすことができました。
 
 === Laradock を使ったほうが良いか独自に作ったほうが良いか
-今回のdocker-compose を利用することで、結果的にLaradock から離脱するような形になってしまいました。果たしてLaradock から離れることは判断として正しかったのか？それは未だにわかっていません。しかし今回のケースではシンプルなLEMP 環境があれば充分であったためLaradock はオーバーキルな状態にありました。またLaradock は公式のドキュメントどおりに使うにはとても良いのですが、その中に独自のPython 環境を入れようとしたりすると結局は自分の手でカスタマイズすることが多くなっていき、あまり恩恵を感じることがありませんでした。また今までは各メンバPC 上でビルドを走らせることによりビルドを実行した日時によって内部の細かいパッケージ等のバージョンが微妙に異なるようになったりすることで、各メンバに対して同一なイメージを配布することはできていませんでした。そして考えた結果、自分でDockerfile を組んでイメージを作成し、更にDocker Automated Builds を使うことでメンバのビルド日時や環境に依存すること無く、同一な開発環境イメージを各メンバの手元に配布することができるようになりました。
+今回はdocker-compose を利用することで、結果的にLaradock から離脱するような形になってしまった一方でAutomated Builds を使用してメンバのビルド環境に依存しない開発環境を用意することができました。果たしてLaradock から離れることは判断として正しかったのか？それは判断が難しいところです。しかし今回のケースではシンプルなLEMP 環境があれば充分であったためLaradock はオーバーキルな状態にありました。またLaradock は公式のドキュメントどおりに使うにはとても良いのですが、その中に独自のPython 環境を入れようとしたりすると結局は自分の手でカスタマイズすることが多くなっていき、Laradock を使う恩恵をあまり感じることができませんでした。また今までは各メンバのPC でビルドを走らせることによりビルドを実行した日時によって内部の細かいパッケージ等のバージョンが微妙に異なるようになったりすることで、各メンバに対して同一なイメージを配布することはできていませんでした。それらを考慮すると、自分でDockerfile を作成してDocker Automated Builds でイメージを作成しすることでメンバのビルド日時や環境に依存すること無く、同一な開発環境イメージを配布することができるようになりました。
 
-どちらが正解かはわかりませんが、確実に言えることはシンプルなLEMP 環境であれば自作のDocker イメージでも充分に開発に耐えられることです。一方で今後アプリケーションに高度な仕様が出てきた時にRedis と組み合わせたりメール送信サーバと組み合わせたりといったものが出てきた場合、またLaradock に戻ってくるといった選択は充分にありえるでしょう。
+今でも正解がどちらかはわかりませんが、確実に言えることはシンプルなLEMP 環境であれば自作のDocker イメージでも充分に開発に耐えられるし、それであればDocker Automated Builds を使ってイメージをDocker Hub 上でビルドしてしまうほうがメンバに対してより同一な開発環境を提供できます。一方で今後アプリケーションに高度な仕様が出てきた時に、例えばRedis と組み合わせたりメール送信サーバと組み合わせたりといったものが出てきた場合、またLaradock に戻ってくるといった選択は充分にありえるでしょう。
 
 =={sec-ext1} デプロイ
 AWS、Heroku、GCP、そして自宅サーバ
