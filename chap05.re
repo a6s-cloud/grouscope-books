@@ -69,12 +69,12 @@ $ docker run hello-world
 ==== Docker のイメージとコンテナの性質を体験してみる
 Docker イメージとコンテナの違いを実際にコマンドを打って体験してみることにしましょう。まずは次のようにdocker run コマンドを実行してAlpine Linux コンテナを起動します。以下のコマンドはAlpine Linux イメージが無い状態から実行していることを想定しています。
 
-//cmd[docker run でAlpine Linux]{
+//cmd[docker run でAlpine Linux(紙面の都合上一部変更)]{
 $ docker run -ti alpine sh
 Unable to find image 'alpine:latest' locally
 latest: Pulling from library/alpine
 050382585609: Pull complete 
-Digest: sha256:6a92cd1fcdc8d8cdec60f33dda4db2cb1fcdcacf3410a8e05b3741f44a9b5998
+Digest: sha256:6a92cd1fcdc8d8cdec6......4a9b5998
 Status: Downloaded newer image for alpine:latest
 / # 
 //}
@@ -97,21 +97,20 @@ An application said. 'Hellow world'
 
 するとDocker ホスト側にプロンプトが戻ります。この状態でイメージとコンテナの状態を確認してみます。
 
-//cmd{
+//cmd[紙面の都合上一部出力内容を修正]{
 $ # イメージの確認
 $ docker images
-REPOSITORY                 TAG                 IMAGE ID            CREATED             SIZE
-alpine                     latest              b7b28af77ffe        3 weeks ago         5.58MB
+REPOSITORY  TAG     IMAGE ID      CREATED      SIZE
+alpine      latest  b7b28af77ffe  3 weeks ago  5.58MB
 $ # コンテナの確認
 $ docker ps -a
-CONTAINER ID  IMAGE   COMMAND  CREATED      STATUS                    PORTS  NAMES
-c29ef7560eaa  alpine  "sh"     -            Exited (0) 2 seconds ago         vibrant_lumiere
-$ # ※紙面の都合上表示を一部変更
+CONTAINER ID  IMAGE   COMMAND  CREATED  STATUS      PORTS  NAMES
+c29ef7560eaa  alpine  "sh"     -        Exited ...  vibrant_lumiere
 //}
 
 すると先程pull したイメージと起動したコンテナが表示されます。ただしこのコンテナは"STATUS" の項目を見るとわかるとおり、シェルのセッションを抜けた約2 秒前に停止しているコンテナになります。コンテナはそのコンテナ内で起動しているメインプロセスが停止すると、コンテナ自体も終了する仕組みになっています。そのため先程の例ではdocker run でsh のメインプロセスが起動してログアウトすることでメインプロセスが終了して、コンテナも終了するようになっています。次にコンテナ名を見てみると"vibrant_lumiere" という名前がつけられています。これはコンテナを作成するたびにランダムにつけられる名前となり、コンテナをもう一度起動したり削除したりする時に指定できるものになります。それでは次に、docker start コマンドでこのコンテナをもう一度起動してみましょう。
 
-//cmd{
+//cmd[]{
 $ docker start vibrant_lumiere
 vibrant_lumiere
 $ docker ps
@@ -129,14 +128,13 @@ An application said. 'Hellow world'
 
 ファイルがありました。先程作成したファイルはコンテナ内に残り続けていることがわかります。ここでもう一度ログアウトしてコンテナを停止し、コンテナを削除してみましょう。
 
-//cmd{
+//cmd[紙面の都合上一部出力内容を修正]{
 / # exit
 $ docker rm vibrant_lumiere
 vibrant_lumiere
 $ docker ps -a
-CONTAINER ID  IMAGE  COMMAND  CREATED             STATUS              PORTS               NAMES
-CONTAINER ID  IMAGE   COMMAND  CREATED      STATUS                    PORTS  NAMES
-c29ef7560eaa  alpine  "sh"     -            Exited (0) 2 seconds ago         vibrant_lumiere
+CONTAINER ID  IMAGE   COMMAND  CREATED  STATUS      PORTS  NAMES
+c29ef7560eaa  alpine  "sh"     -        Exited ...         vibrant_lumiere
 //}
 
 コンテナが削除されました。このコンテナの削除をもって状態のリストアは完了です。それではもう一度コンテナをdocker run コマンドから起動してみましょう。
@@ -218,11 +216,11 @@ Laradock を起動させたところで、一旦docker ps コマンドを実行�
 
 //cmd[紙面の都合上、一部出力を変更]{
 $ docker ps
-CONTAINER ID  IMAGE               COMMAND  CREATED             STATUS  PORTS  NAMES
-8b407ee12c7a  l_nginx      ....   5 minutes ago  Up n seconds  ...     laradock_nginx_1
-f5dc49dae496  l_php-fpm    ....   5 minutes ago  Up n seconds  ...     laradock_php-fpm_1
-a9cdaae0a76a  l_workspace  ....   5 minutes ago  Up n seconds  ...     laradock_workspace_1
-44641c8fee0b  l_mysql      ...    5 minutes ago  Up n seconds  ...     laradock_mysql_1
+CONTAINER ID  IMAGE        COMMAND  .  STATUS    PORTS  NAMES
+8b407ee12c7a  l_nginx      ...      .  Up n sec  ...    laradock_nginx_1
+f5dc49dae496  l_php-fpm    ...      .  Up n sec  ...    laradock_php-fpm_1
+a9cdaae0a76a  l_workspace  ...      .  Up n sec  ...    laradock_workspace_1
+44641c8fee0b  l_mysql      ...      .  Up n sec  ...    laradock_mysql_1
 //}
 
 これらのコンテナがどのように関わり合っているかということを図で示すと次のようになります。
@@ -301,26 +299,21 @@ $ git submodule update --init --recursive
 //emlist[docker のMySQL コンテナに無理やりSQL を送っているbuild スクリプト(ゲシュタルトの崩壊)]{
 # ......
 docker-compose exec mysql bash -c '
-
-    # ...(略)...
-
-    MYSQL_PWD="${DB_PW_ROOT}" mysql -u root \
-        <<< "ALTER USER '"'"'default'"'"'@'"'"'%'"'"' IDENTIFIED WITH mysql_native_password BY '"'"'secret'"'"';"
-    MYSQL_PWD="${DB_PW_ROOT}" mysql -u root \
-        <<< "GRANT ALL ON ${DB_NAME}.* TO '"'"'default'"'"'@'"'"'%'"'"';"
+  # ...(略)...
+  MYSQL_PWD="${DB_PW_ROOT}" mysql -u root \
+    <<< "ALTER USER '"'"'default'"'"'@'"'"'%'"'"' IDENTIFIED WITH mysql_native_password BY '"'"'secret'"'"';"
+  MYSQL_PWD="${DB_PW_ROOT}" mysql -u root \
+    <<< "GRANT ALL ON ${DB_NAME}.* TO '"'"'default'"'"'@'"'"'%'"'"';"
 '
 # ......
 //}
 
 Docker ホスト側からコンテナ側に対してSQL を発行していますが、このようにbash と標準入力や引数を駆使することでコンテナ側のコマンドを呼び出す事ができます@<fn>{chenv_05}。戦略によっては一旦Laradock のイメージを普通にビルドして、それに対して我々で作成したDockerfile でgrouscope 専用のイメージをビルドする形式も取れましたが、当時はそこまでカスタマイズ規模は大きくならないだろうと思ってbash で小手先な対応をしていました。今となっては黒歴史です。
-
 //footnote[chenv_05][決してこのような書き方を推奨するものではありません]
 
 == 俺の環境では動いたのだよ俺の環境では
 メンバの開発環境PC のOS はMac かLinux でどちらもbash 環境が整備されているので、ゴリゴリと環境構築スクリプトを作っていいきました。その環境構築スクリプトがコテコテになっていったところで、トキさんからSlack で報告をいただきました。
-
 //image[chap05/0013_AReportFromToki][トキさんからいただいた報告][scale=1.00]
-
 なんとスクリプトでエラーが出て動かないという内容でした。OS はトキさんがMac で私がLinux。OS は違くともどちらもbash 環境を備えていました。まとトキさんと同じMac 環境であるなおとさんの手元ではビルドは成功していると報告を受けています。そんなはずは無い…と思いながらも原因究明のための調査に入りました。
 
 === エラーの原因とは
@@ -331,14 +324,10 @@ NOTICE: mysql データを初期化しています。
 ERROR: No container found for mysql_1
 ## Stack Trace ########################################################
 Error in ./build.sh:124. 'docker-compose exec mysql bash -c '
-
         # (一部内容省略)
-
         echo ">>> sql: CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
         MYSQL_PWD=${DB_PW_ROOT} mysql -u root <<< "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
-
         # (一部内容省略)
-
     '' exited with status 1
 Call tree:
  1: ./build.sh:118 init_mysql_db(...)
@@ -384,7 +373,7 @@ DATA_PATH_HOST=./.laradata
 
 (1)に関しては前項で述べた通りのエラーで、Laradock の永続化データ保存ディレクトリが他のLaradock を使っているプロジェクトと被ったりすることで発生しうる問題です。(2)、(3)についてはもう少し詳細に見ていくことにしましょう。
 
-=== build.sh が実行される環境のbash バージョン差異によるエラー
+=== build.sh 実行環境のbash バージョン差異によるエラー
 bash はMac にもLinux も入っている場合が殆どで、私が普段使っているArch Linux もbash が入っています。bash は安定していてスクリプトを作成するのに役立つ便利な仕様や機能も多く備わっています。例えば以下のような書き方をする事で変数の中のアルファベット文字列を一律で大文字に変換する事ができます。パイプなどを使って他の文字列操作系のコマンドに値を渡さなくてもこのような文字列変換ができるようになっています。
 
 //emlist[upper_string.sh]{
@@ -439,7 +428,8 @@ sed␣-i␣""␣-e␣"s/^Foo/Bar/g"␣file.txt
 
 (2)については「Linux でエラー無く動くがMac でエラーが出るもの」になります。Mac で実行しようとすると下記のようなエラーが出ます。
 //cmd{
-$ find . -type f -regextype posix-extended -regex '^.*/access_[0-9]+\.gz$' -exec chmod 640 {} \;
+$ find . -type f -regextype posix-extended \
+     -regex '^.*/access_[0-9]+\.gz$' -exec chmod 640 {} \;
 find: -regextype: unknown primary or operator
 //}
 "-regextype" というオプションが無いようです。find コマンドはMac もLinux もIEEE Std 1003.1 @<fn>{chenv_11}に基づいていますので基本的に同じオプションが使えるようになっています。しかし、例外的にfind コマンドの正規表現オプションについてはMac とLinux で異なるのです(その他にもいくつかあるかもしれません)。理由までは見つけることができませんでしたが、少なくともMac で同様な正規表現オプションを利用する場合は"-E" オプションが使えます。
@@ -497,9 +487,11 @@ file.txt-e
 //}
 一方でMac のsed コマンドのドキュメントを見てみると次のようになっています。
 //emlist{
+......
 -i extension
         Edit files in-place, saving backups with the specified extension.  If a zero-length extension is given, no backup will be saved.  It is not recommended to give a zero-
         length extension when in-place editing files, as you risk corruption or partial content in situations where disk space is exhausted, etc.
+......
 //}
 微妙にバックアップファイルの拡張子を指定する位置が違います。Linux のsed では-i オプションのすぐ後に空白なしでファイルの拡張子を指定するようになっているのに対し、Mac のsed では空白を1 つ開けて拡張子を指定するようになっています。色々コマンドを実行してエラーメッセージを出しましたが、ドキュメント的には挙動は正しそうです。
 
@@ -518,7 +510,6 @@ Docker イメージをビルドするためのDockerfile を作成します。Do
 //image[chap05/0022_GrouscopeImagesOfDockerAutomatedBuilds][grouscope でのDocker イメージ構成][scale=0.80]
 
 ==== nginx イメージ
-
 それではまずはnginx のDockerfile を作成していきます。nginx は後側のLaravel のコンテナに対してリクエストをリバースプロキシするだけなのでそれほど複雑なDockerfile にはなりません。
 
 //emlist[/docker/nginx/Dockerfile]{
@@ -583,7 +574,7 @@ FROM php:7.3-fpm-stretch
 RUN apt-get update && \
   DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
   DEBIAN_FRONTEND=noninteractive apt-get install -y ... && \
-  DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y python3 ... && \
   docker-php-ext-configure gd --with-freetype-dir=/usr/include/ ... && \
   # ...(略)...
 
@@ -604,8 +595,8 @@ Laravel イメージはphp-fpm イメージをベースに作成します。ベ�
     "post-install-cmd": [
       "@php artisan migrate",
       "@php artisan db:seed",
-      "pip3 install -r requirements.txt",  # Python の依存インストール
-      "git submodule update --init --recursive"  # git submodule の依存インストール
+      "pip3 install -r requirements.txt",  # Python の依存
+      "git submodule update --init --recursive"  # git submodule の依存
     ],
     # ...(略)...
   }
