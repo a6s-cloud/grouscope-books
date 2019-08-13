@@ -20,6 +20,7 @@ module ReVIEW
   Compiler.definline :TeX               ## TeX のロゴマーク
   Compiler.definline :LaTeX             ## LaTeX のロゴマーク
   Compiler.definline :cursor            ## ターミナルでのカーソル
+  Compiler.definline :weak              ## 目立たせない（@<strong>{} の反対）
 
   ## ブロック命令「//textleft{ ... //}」等を宣言
   ## （ここでは第2引数が「0」なので、引数なしのブロック命令になる。
@@ -91,6 +92,15 @@ module ReVIEW
         "{\\reviewstrike{\\seqsplit{#{escape(str)}}}}"  # エラーにならないし、折り返しもされる
       else
         macro('reviewstrike', escape(str))
+      end
+    end
+
+    ## 目立たせない（@<strong>{} の反対）
+    def inline_weak(str)
+      if within_codeblock?()
+        "{\\starterweak{\\seqsplit{#{escape(str)}}}}"
+      else
+        "\\starterweak{#{escape(str)}}"
       end
     end
 
@@ -306,6 +316,11 @@ module ReVIEW
     ## @<strong>{} のショートカット
     def inline_B(str)
       inline_strong(str)
+    end
+
+    ## 目立たせない（@<strong>{} の反対）
+    def inline_weak(str)
+      "<span class=\"weak\">#{escape_html(str)}</span>"
     end
 
     ## コードブロック中で折り返し箇所を手動で指定する

@@ -686,14 +686,16 @@ module ReVIEW
           v =~ /\A[Hhtb]+\z/  or  # H: Here, h: here, t: top, b: bottom
             raise "//image[][][pos=#{v}]: expected 'pos=H' or 'pos=h'."
           pos = v     # detect 'pos=H' or 'pos=h'
-        when 'border'
+        when 'border', 'draft'
           case v
-          when nil  ; border = true
-          when 'on' ; border = true
-          when 'off'; border = false
+          when nil  ; flag = true
+          when 'on' ; flag = true
+          when 'off'; flag = false
           else
-            raise "//image[][][border=#{v}]: expected 'border=on' or 'border=off'"
+            raise "//image[][][#{k}=#{v}]: expected '#{k}=on' or '#{k}=off'"
           end
+          border = flag          if k == 'border'
+          arr << "draft=#{flag}" if k == 'draft'
         else
           arr << (v.nil? ? k : "#{k}=#{v}")
         end
@@ -1017,6 +1019,19 @@ module ReVIEW
         @compile_errors = true
         warn "compile error in #{filename}.tex (#{e.class})"
         warn e.message
+      end
+    end
+
+    ## 開発用。LaTeXコンパイル回数を環境変数で指定する。
+    if ENV['STARTER_COMPILETIMES']
+      alias __system_or_raise system_or_raise
+      def system_or_raise(*args)
+        @_done ||= {}
+        ntimes = ENV['STARTER_COMPILETIMES'].to_i
+        @_done[args] ||= 0
+        return if @_done[args] >= ntimes
+        @_done[args] += 1
+        __system_or_raise(*args)
       end
     end
 
