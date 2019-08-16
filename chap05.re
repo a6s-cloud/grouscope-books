@@ -1066,10 +1066,71 @@ $ ip a
 
 ==== 動的IP アドレスの問題
 一般家庭にもグローバルIP アドレスは割り振られますが、これはあくまでも一時的なものです。ルータが再起動したりプロバイダのPPPoE のセッションが切れて再度認証が走ったりした時等にグローバルIP アドレスが変わっている可能性があります。そう、一般家庭のグローバルIP アドレスは動的なグローバルIP アドレスになっているのです@<fn>{homeserver_dynamic_groubal_ip}。IP アドレスが動的に変わるとなるとフロントエンドアプリケーションからバックエンドアプリケーションにアクセスするアドレスとして何を設定したらよいか困ってしまいます。それを解決するためにダイナミックDNS というサービスがあります。
-
 //footnote[homeserver_dynamic_groubal_ip][もちろんプロバイダのプランによって固定グローバルIP アドレスを取得することもできます。がたいてい追加料金が発生します]
 
+==== DDNS の利用
+動的IP アドレスによってアクセスする時に指定するアドレスが安定しない問題に対応する手段としてDDNS(ダイナミックDNS)があります。ダイナミックDNS は動的に変わるIP アドレスに対して、DNS レコードを動的に登録、管理することにより固定的なホスト名やFQDN を提供するDNS サービスです。自宅サーバ等を公開する時にためになるDDNS サービスとしては、例えば以下のようなものがあります。
+ * 私的DNS(MyDNS.JP): https://www.mydns.jp/
+ * no-ip: https://www.noip.com/
+ * Duck DNS: http://duckdns.org/
+今回は簡単なWeb サーバ公開くらいの要件なので、DNS のA レコードが引ければ良いでしょう。ということで、今回はシンプルに動的にDNS A レコードが登録できるDuck DNS を使っていきたいと思います。
 
+==== Duck DNS に登録
+Duck DNS はTwitter やGitHub、reddit、Google 等のアカウントを持っていればすぐに始められるDDNS サービスです。
+//image[chap05/0065_HomeServerDuckDNS][DuckDNS のトップページ][scale=1.0]
+
+試しにログインしてみましょう。するとドメイン登録画面に遷移します。
+//image[chap05/0066_HomeServerDuckDNSAfterLogin][DuckDNS のドメイン登録画面][scale=1.0]
+
+ドメインの後ろ部分はduckdns.org 固定となります。その上のホスト名部分を自由に選択できます(ただし既に登録されていないこと)。例えば"http://" の後にa6shogefuga(仮) と入力して"add domain" ボタンを押すとドメインが登録されます。
+
+次は画面に表示されているtoken(仮に00000000-0000-0000-0000-000000000000 とします) をコピーしてあなたのサーバにて次のようなbash スクリプト、duckdns.shを作成してください。
+//emlist[/opt/duckdns.sh]{
+#!/bin/bash
+curl https://www.duckdns.org/update?domains=a6shogefuga&token=00000000-0000-0000-0000-000000000000&ip="
+//}
+
+スクリプトを作成したら実行権限をつけて実行してみましょう。
+//cmd{
+$ chmod u+x /opt/duckdns.sh
+$ /opt/duckdns.sh
+OK
+//}
+
+OK というレスポンスが得られれば成功です。このスクリプトがやっていることはDuckDNS のドメインアップデートサーバにアクセスしてDNS の指定したドメインのIP アドレスを自宅のIP アドレスで更新するリクエストです。スクリプト実行することでtoken で認証が行われて対象のドメインをsrc IP で更新するというものになっています。もし時間が経って自宅のIP アドレスが変わったとしても新しいIP アドレスでドメインが更新されることになりるので、ドメインを指定してサービスにアクセスすることで常に自宅のサーバに接続することができるようになります。あとはこのスクリプトをLinux のcron に登録して定期的に実行されるようにすれば良いでしょう。
+//emlist[cron の登録例]{
+*/15 * * * * /opt/duckdns.sh > /dev/null 2>&1
+//}
+完了です。これで自宅サーバに対して常に同じアドレス情報でアクセスできるようになりました。
+//image[chap05/0067_HomeServerUpdateIPOnDuckDNS][cron で定期的にグローバルIP アドレスを更新][scale=1.0]
+
+==== アプリケーションの起動
+アクセスする環境が整ったので次はアプリケーションを起動します。アプリケーションの起動はAWS EC2 の時と同じです。Docker が既にインストールされている状態で以下のようにすればアプリケーションは起動します。
+
+//cmd{
+$ git clone https://github.com/a6s-cloud/grouscope-backend.git
+$ cd grouscope-backend
+
+$ # Twitter のAPI KEY を設定する
+$ vim .env
+> CONSUMER_KEY="xxxxxxxxxxxxxxxxxxxxxxxxx"
+> CONSUMER_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+> ACCESS_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+> ACCESS_TOKEN_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+$ docker-compose up -d
+$ docker-compose logs -f
+$ # "NOTICE: ready to handle connections" メッセージが出るまで待つ
+//}
+この状態でhttp://a6shogefuga/ にアクセスすることで、アプリケーションにアクセスすることができます。
+
+==== 自宅サーバで他にやること
+自宅サーバでサービスを公開する場合、重要な情報を使わないサービスだったりSLA を気にする必要のない趣味的なものや検証環境として利用する目的で比較的に気軽に運用することができるでしょう。しかしそれが本番サービスとして重要な個人情報やお金の取引、SLA の確保が必要となってくると結構大変かも知れません。例えば定期的にLinux や自宅のルータに脆弱性が無いか、アンテナを高くし続けている必要がアリますし、見つかった場合はアップデートしなければなりません。もちろんアップデートしたことによりライブラリの互換性がなくなり、アプリが動かなくなったりサーバが起動しなくなったりと言うようなことがあってはいけません。また自宅内のLAN となると自分の作業PC やゲーム機などと行ったものもつなげることになるでしょう。そうするとそれらに対して攻撃や情報を盗み見されないようにするためにDMZ も構築しておいたほうが良いかも知れません。またアプリケーショのバックアップ先やハードウェア故障時もサービスが継続できるように冗長化、停電時に安全にシャットダウンできるようにUPS の準備や自家発電装置の準備等々考えることはたくさんあります。
+
+自宅サーバでサービスを展開する場合は、自分の趣味的なサービスであるかダウンしても重大な損害や損失の無いサービスとしておいたほうが良さそうです。ただ自宅サーバも構築自体はネットワークやLinux 等の知識を増やすにはとても良い勉強にはなりますので、やはり趣味としてちょっとしたサービスを展開するにはアリかも知れません。
+
+=== クラウドか自宅サーバか
+TODO
 
 =={sec-ext1} CI
 CircleCI、TravisCI
