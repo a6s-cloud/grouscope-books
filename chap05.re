@@ -110,7 +110,7 @@ c29ef7560eaa  alpine  "sh"     -        Exited ...  vibrant_lumiere
 
 すると先程pull したイメージと起動したコンテナが表示されます。ただしこのコンテナは"STATUS" の項目を見るとわかるとおり、シェルのセッションを抜けた約2 秒前に停止しているコンテナになります。コンテナはそのコンテナ内で起動しているメインプロセスが停止すると、コンテナ自体も終了する仕組みになっています。そのため先程の例ではdocker run でsh のメインプロセスが起動してログアウトすることでメインプロセスが終了して、コンテナも終了するようになっています。次にコンテナ名を見てみると"vibrant_lumiere" という名前がつけられています。これはコンテナを作成するたびにランダムにつけられる名前となり、コンテナをもう一度起動したり削除したりする時に指定できるものになります。それでは次に、docker start コマンドでこのコンテナをもう一度起動してみましょう。
 
-//cmd[]{
+//cmd{
 $ docker start vibrant_lumiere
 vibrant_lumiere
 $ docker ps
@@ -778,10 +778,7 @@ EC2 ダッシュボードに戻ると作成したインスタンスが表示さ�
 
 ==== 固定IP の取得
 AWS EC2 ではインスタンス起動時に自動で固定IP が割り振られるようになっていますが、デフォルトで割り振られるIP は仮のIP でインスタンスを停止した時にそのIP アドレスは開放され、もう一度起動した時に異なるグローバルIP が割り振られるようになっています。ここでは固定IP を取得することでインスタンスを停止しても常に同じIP アドレス(もしくはAWS 側で自動生成される固定なFQDN を)使ってアクセスできるようにするために、Elastic IP から固定IP を取得してインスタンスに関連付けをしていきます。固定IP の取得とElastic IP 取得はAWS にログインしてEC2 ダッシュボードの左メニューにあるElastic IP から取得していきます。Elastic IP の管理画面に到達したら"新しいアドレスの割当" をクリックしてアドレスを割り当てます。今回取得できたアドレスはx.x.x.x とします。
-
 //image[chap05/AWSEC2_ElasticIP0001][新しいアドレスの割当 をクリックした直後][scale=1.0]
-
-
 
 アドレスの関連付けを行ないます。Elastic IP のページから先程作成したElastic IP を選択し、"アクション"->"アドレスの関連付け"をクリックします。するとアドレスの関連付け画面が表示されるのでインスタンスのところに先程作成したEC2 インスタンスのID を入力します。フォーム(プルダウン)のところをクリックすると候補が出てきて先程作成したインスタンスのID が表示されるはずなので、その中から選んでください。
 
@@ -847,6 +844,14 @@ $ # 再ログインする
 //cmd{
 $ git clone https://github.com/a6s-cloud/grouscope-backend.git
 $ cd grouscope-backend
+
+$ # Twitter のAPI KEY を設定する
+$ vim .env
+> CONSUMER_KEY="xxxxxxxxxxxxxxxxxxxxxxxxx"
+> CONSUMER_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+> ACCESS_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+> ACCESS_TOKEN_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 $ docker-compose up -d
 $ docker-compose logs -f
 $ # "NOTICE: ready to handle connections" メッセージが出るまで待つ
@@ -861,29 +866,139 @@ $ # "NOTICE: ready to handle connections" メッセージが出るまで待つ
 以上で環境が構築できました。これでバックエンドの環境構築とアプリケーションの起動は完了です。
 
 ==== AWS EC2 で他にやるべきこと
-これでフロントエンドからリクエストを処理するバックエンドアプリケーション構築の完成です。実際に本番運用するには他に実施しておいたほうが良いものもあるでしょう。例えば、今回のgrouscope のアプリケーションですがリクエストが来るたびに、ツイート情報を取得しにTwitter へアクセスが発生することになり、また集計して画像を作成するという負荷の高い処理が走ります。そのため、Dos 攻撃をされた場合にTwitter のAPI 制限に到達したりCPU 処理を取られて正常な動作ができなくなったり、集計結果の画像でディスクを圧迫したりといった障害が出てくるでしょう。防止は完全には無理かも知れませんがフロント側のアプリケーションを認証するような仕組みが必要になってくるでしょう。また、それに伴いHTTPS 化もしておいたほうが良いでしょう。プライベートでやるには企業者組織の存在証明までは不要だと思うので無料のSSL/TLS 証明書で充分と考えます。あとはCloudWatch を使用してCPU の使用率が異常に高騰していないか、ディスク領域を食い尽くしていないか等の監視をして、アプリケーション本体だけでなくインスタンスの異常を検知する仕組みも導入しておくべきでしょう。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+バックエンドアプリケーションの構築は完了しましたが、これを実際に本番運用するには、まだいくつか追加で設定をしておいた方が良いでしょう。例えば今回のgrouscope のアプリケーションはリクエストが来るたびに、Twitter へツイート情報を取得しにアクセスして内容を集計、解析、画像生成という負荷の高い処理が走ることになります。
+そのため短時間に大量のアクセスがあった場合に何度もTwitter へツイートを取得しにいくことになりTwitter API の上限に到達してエラーとなったり、重い処理にCPU を取られて正常な動作ができなくなったり、大量の集計結果画像でディスクを圧迫したりといった弊害が出てくるでしょう。
+これらを完全に防止することは無理かも知れませんが、対策としては解析依頼のリクエストが飛んできたら一旦キューに蓄えて余裕のある時に処理が走るように非同期化したり、解析依頼を出す時にユーザ認証して同じユーザからの頻繁な解析依頼は一旦保留とする等の仕組みがあると良いでしょう。ユーザ認証を入れる場合、セキュリティ的な面も考慮してHTTPS 化もしておいたほうが良くなります。プライベートのプロジェクトでお金やユーザ本人の個人情報等の重要なもののやり取り等が発生しないのであれば企業者組織の存在証明までは不要だと思うので無料のSSL/TLS 証明書で充分と考えます。あとはAWS のCloudWatch を使用してCPU の使用率が異常に高騰していないか、ディスク使用領域を食い尽くしていないか等の監視をして、アプリケーション本体だけでなくインスタンス異常を検知する仕組みも導入しておくべきでしょう。
 
 
 === Heroku を使ってみた
-Heroku はPaaS なコンテナシステムをベースとしたアプリケーションのデプロイ/実行環境です。コンテナということはDocker の時に触れたように、永続的にデータが保持されていることが保証されていない環境へのデプロイと考え、今までの一般的なLinux 環境等にリソースをデプロイしてきた人にとっては少し特殊な環境へのデプロイと考えるのが良いでしょう。しかしこの性質がgit のようなバージョン管理システムと組み合わせることで完全性の観点において意外と相性が良かったりします。
+Heroku はPaaS なコンテナシステムをベースとしたアプリケーションのデプロイ/実行環境です。コンテナということはDocker の時に触れたように、永続的にデータが保持されていることが保証されていない環境へのデプロイと同様で、今までサーバサイドでLinux 環境にアプリケーションをデプロイしてきた人にとっては少し慣れない環境へのデプロイと感じるかもしれません。しかしこの性質がgit のようなバージョン管理システムで管理されているアプリケーションと組み合わせることで意外と相性が良かったりします。
 
-Heroku ではアプリケーションを配備され、実行される環境をdyno と呼びます。dyno はユーザが指定されたアプリケーション起動コマンドに基づいて実行されるように設計されたコンテナとなります。なので開発者としてはアプリケーション本体とアプリケーションを起動するコマンドを意識してもらえればアプリケーションのデプロイまで管理できるようになります。
-TODO
+==== デプロイの構成
+Heroku ではアプリケーション本体が配備されるephemeral なコンテナ環境のことをdyno と呼びます。Heroku ではHeroku のGit リポジトリに対してリソースをpush することでslug コンパイラでアプリケーションがビルドされて圧縮、パッケージ化されてslug へ送られます。そしてパッケージ化された資材はdyno のコンテナにデプロイされアプリケーションが起動します。なぜHeroku のgit にpush した資材が直接dyno にデプロイされないかというと、slug コンパイラで事前にパッケージ化することでアプリケーションのスケールアップ要求が来た時に、dyno のコンテナを増設してslug にあるパッケージからデプロイするようにするというキャッシュ的な用途で使われるためです。このようにHeroku では柔軟なスケールアップ要求にも対応できるようにデプロイプロセスが設計されています。
+//image[chap05/0051_DeployOnHeroku0001][Heorkuのデプロイの流れ][scale=1.0]
+
+==== デプロイしてみる
+Heroku にアカウントを作成して実際にアプリケーションをデプロイしてみましょう。ここではHeroku へのアカウント登録とheroku CLI ツールのインストールは既に済んでいるものとして進めていきたいと思います。今回は過去にHeroku へのデプロイを検証した時の資材がgrouscope-backend に残っていますのでそれを利用して確認してみることにしましょう。
+
+//cmd{
+$ git clone https://github.com/a6s-cloud/grouscope-backend.git
+$ cd grouscope-backend
+$ heroku login
+$ # -> Web ブラウザが開いてログインボタンが表示される
+$ git checkout -b deploy_a6s_on_heroku origin/deploy_a6s_on_heroku
+$ # Procfile を作成してboot スクリプトを指定する
+$ echo "web: vendor/bin/heroku-php-apache2 public/" > a6s-cloud/Procfile
+$ # ※既にコミットされている場合はadd/commit は不要
+$ git add a6s-cloud/Procfile
+$ git commit -m "Added Procfile"
+$ # dyno を作成する。同時にgit のremote にHeroku のGit リポジトリが追加される
+$ heroku create
+...
+https://agile-earth-xxxxx.herokuapp.com/ | https://git.heroku.com/agile-earth-xxxxx.git
+
+$ # Laravel のAPP_KEY を生成する(base64:... の部分)
+$ docker run --rm -v "${PWD}/a6s-cloud:/a" a6scloud/grouscope-laravel \
+    bash -c "cd /a && composer install --no-scripts && php artisan key:generate --show"
+...
+base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+$ # Laravel のAPP_KEY を設定する
+$ heroku config:set APP_KEY=base64:xxxxxxxxxxxxxxxxxxxxxxxxx...
+$ # PHP、Python ビルドパックを指定する
+$ heroku buildpacks:set heroku/php
+$ heroku buildpacks:add heroku/python
+$ heroku buildpacks
+=== agile-earth-xxxxx Buildpack URLs
+1. heroku/php
+2. heroku/python
+//}
+
+以上でLaravel アプリケーションのdyno は作成されました。次はMySQL を準備します。我々がここまで作成したdyno にLaravel の実行環境を準備してきましたが、dyno 内のファイルシステムはephemeral でファイルやデータを永続的に保存しておくという約束がありません。そのためdyno 内にDB を持ってくることはできません。DB のデータは揮発性では困るのでMySQL アドオンをdyno にアタッチしてそちらにDB のデータは保存するようにします。
+//image[chap05/0052_DifferenceBetweenDynoAndAddOn][dyno とadd-on の関係][scale=0.8]
+
+今回MySQL のアドオンとしてお試しで0 円から始められるMySQL アドオンで、5MB まで無料で利用することができるJawsDB@<fn>{heroku_jawsdb_page} を使っていきます。JawsDB をアドオンとして追加するには以下のようにコマンドを実行するだけです。
+//footnote[heroku_jawsdb_page][https://elements.heroku.com/addons/jawsdb]
+//cmd{
+$ heroku addons:create jawsdb
+//}
+
+これでアドオンのアタッチは完了です。次はLaravel に接続先を設定するために以下のコマンドを実行してWeb ブラウザでダッシュボードを開き、DB の情報を確認します。
+//cmd{
+$ heroku addons:open jawsdb
+//}
+
+ダッシュボードから以下の値を確認してください。
+
+//list[ダッシュボードのDB 接続情報(値は仮)]{
+Host: xxxxxxxxxxxxxxxx.yyyyyyyyyyyy.us-east-1.rds.amazonaws.com
+Username: xxxxxxxxxxxxxxxx
+Password: yyyyyyyyyyyyyyyy
+Port: 3306
+Database: zzzzzzzzzzzzzzzz
+//}
+これらの値を取得したら、Laravel アプリケーションの環境変数として"heroku config:set" コマンドを使って設定していきます。設定する環境変数のキーはLaravel の.env の内に書かれているものを参考に指定していきます。
+
+//cmd{
+$ heroku config:set DB_HOST=xxxxxxxxxxxxxxxx.yyyyyyyyyyyy.us-east-1.rds.amazonaws.com
+$ heroku config:set DB_USERNAME=xxxxxxxxxxxxxxxx
+$ heroku config:set DB_PASSWORD=yyyyyyyyyyyyyyyy
+$ heroku config:set DB_PORT=3306
+$ heroku config:set DB_DATABASE=zzzzzzzzzzzzzzzz
+
+$ # API KEY を設定します
+$ heroku config:set CONSUMER_KEY="xxxxxxxxxxxxxxxxxxxxxxxxx"
+$ heroku config:set CONSUMER_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+$ heroku config:set ACCESS_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+$ heroku config:set ACCESS_TOKEN_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+//}
+設定できました。これでLaravel アプリケーションが入っているdyno からMySQL アドオンのDB にアクセスできるようになります。それでは待ちに待ったデプロイを実施しましょう。デプロイは前に説明したとおりheorku のGit リポジトリに資材をpush することで始まりますが、Laravel アプリケーションの構成としてcomposer.json がroot のディレクトリに来るようにしなければいけません。今回我々が作成したアプリケーションはa6s-cloud ディレクトリの下にcomposer.json がありますので以下のようにgit subtree コマンドを使ってpush します@<fn>{heroku_deploy_push}。
+//footnote[heroku_deploy_push][composer.json がroot ディレクトリにあり、且つローカルのmaster ブランチをデプロイするなら"git push heroku master" でOK]
+
+//cmd{
+$ git subtree push --prefix a6s-cloud heroku master
+//}
+完成です。heroku create 時に出てきたURL "https://agile-earth-xxxxx.herokuapp.com/" にアクセスするとLaravel の画面が確認できます。次にmysql コマンドを使ってMySQL へ接続し、Laravel アプリケーションからマイグレーションができているかを確認してみましょう。
+
+//cmd{
+$ mysql -u xxxxxxxxxxxxxxxx --password=yyyyyyyyyyyyyyyy \
+    -h xxxxxxxxxxxxxxxx.yyyyyyyyyyyy.us-east-1.rds.amazonaws.com \
+    --port 3306 zzzzzzzzzzzzzzzz
+
+MySQL [zzzzzzzzzzzzzzzz]> show tables;
++----------------------------+
+| Tables_in_ncvalm9tnx12n3if |
++----------------------------+
+| analysis_results           |
+| migrations                 |
+| password_resets            |
+| tweets                     |
+| users                      |
++----------------------------+
+//}
+
+テーブルが作成されています。マイグレーションも成功しています。grouscope アプリケーションの起動に成功しました。
+
+==== Heroku で他にやること
+Heroku へアプリケーションのデプロイが成功しましたが、本番運用を考えている場合はまだ安心できません。
+Heroku にてこれ以降にやることとしては基本的にAWS EC2 にデプロイした時と同様に負荷が高くなりすぎないような工夫や認証機能の追加、セキュリティ設定、アプリが正常運転していることの監視設定等がありますがこれ以外にもまだあります。
+実はこの状態で解析処理を実行したとしても以下のような問題がまだ残っているのです。
+ * 集計、解析、画像生成処理を実行するとメモリ不足でエラーと成る
+ * レスポンスに30 秒以上かかることがあり、エラーとなる
+ * dyno には解析結果画像を保存できない
+
+1 つめのメモリ不足については料金を払ってプランのグレードを上げることで解消することができます。Heroku の仕様として無料プランでは512MB のメモリが定められており、その2倍の1GB までメモリ使用量が到達するとdyno マネージャは問答無用でdyno を再起動してエラーとするようになっています。Heroku の料金プランを見てみるとstandard-2x まで上げればメモリ1GB が定められ、その2倍の2GB までメモリ使用量が到達しなければdyno が再起動されるということは無さそうです。もしくは負荷の高い解析処理と画像生成処理に関しては外部にサーバを建てて処理を委譲するのが良いかも知れません。
+
+2 つめのレスポンスに30 秒以上かかる問題ですが、これはアプリケーションの解析処理、画像生成処理をレスポンスを非同期にすることで解消可能です。解析依頼のリクエストが来たらキューにタスクを入れてユーザ側には一旦in-progress なステータスでレスポンスを返します。そしてサーバ側ではバックグラウンドで処理を実施して終了次第ユーザ側にプッシュ通知式に知らせるか、ユーザ側アプリケーションから定期的にサーバに対して処理ステータスを確認するようにするのが良いでしょう。
+
+3 つめの問題については現状アプリケーションが解析結果画像をサーバの所定ディレクトリに保存するようになっていて、DB にそのファイルへのパスを保持する方式で組まれています。対策としてはまず思い浮かぶのが画像ファイルはDB にblob 型として保管するように設計を変えることです。もう一つはLaravel の機能を使用して画像をAWS S3 のような外部ストレージサービスに保管する方法です。AWS S3 であれば高可用性で容量制限も気にする必要が無いのでストレージのメンテナンス作業にとらわれることがありません。
+
+ここまでHeroku を触ってきてPaaS は一般的なLinux サーバ及びネットワーク環境を提供してくれるIaaS とことなり、アプリの状態や設定に専念できるという大きな利点があります。もし我々でLinux サーバを建ててそこにアプリケーションをインストールすることになればまず大前提としてLinux ディストリビューションは何にするか、定期的にOS パッケージのセキュリティパッチは当てられているか、新しいOS がどんどんリリースされて
+今使っているのがサポート終了になっていないかということを気にする必要があります。が、それらについては完全にHeroku におまかせしておけばよいのです。我々はアプリケーションとその構成に時間と神経を集中させることができるのです。こういった戦略からHeroku を使うというのは今のクラウドが主流になってきている時代の中で、とてもアリな選択ではないでしょうか。
+
+最後に、Heroku でgrouscope を本番可動させたらという個人的な理想構成を残しておきたいと思います。
+//image[chap05/0053_CompleteHeroku][もしgrouscope をHeroku で稼動させたら][scale=1.0]
+
 
 === 自宅サーバを使ってみた
 最後は自宅サーバを使う方法です。サーバというと1 台何十万、ライセンスなども含めると何百万となるハードウェアを購入しなければいけないのかと思われるかも知れませんが、今回は本当にプライベートな環境なので高いサービスレベルを確保するといったことは考えません。結果としてお古のラップトップPC を使ってサーバを構築し、自宅内までアクセスできるように設定を行っていきます。
@@ -891,4 +1006,3 @@ TODO
 
 =={sec-ext1} CI
 CircleCI、TravisCI
-
