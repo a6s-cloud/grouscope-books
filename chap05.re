@@ -1,4 +1,9 @@
 = 環境構築
+
+//flushright{
+つとむ（@tsuna0x00）
+//}
+
 == Linux 愛好家、Webアプリ畑に立つ
 Web 画面を構築しエンドユーザーに魅力的なビジュアルや体験を与えるフロントエンドエンジニア。今話題となっているAngular、React、VueJS を使ったレスポンシブでインタラクティブな画面はユーザのみならず「自分もこんなものを作ってみたい」と開発者の創作意欲を掻き立て新しいフロントエンドエンジニアが誕生することもあります。現代のIT 技術者として花形の職業のひとつです。一方で真っ黒な画面に白い文字で英数字が降り注ぐ中で、キーボードのキーをカタカタと奏でては次々と新しい文字を生み出していく…。一見すると地味で何が面白いのか理解できなかったりする、でもそんな傍からの視線を気にすることもなく我が愛するコンピュータとコマンドを通じて直に会話することに虜になっている人もいます。そう、今回環境構築周りをメインに執筆させていただく私、つとむもその虜になってしまった人間の内の一人です。
 
@@ -652,7 +657,7 @@ Organization を作成したら次はリポジトリを作成しましょう。�
 ここで"Create Repository" をクリックしてリポジトリを作成します。すると"a6scloud" というプレフィクスに続くリポジトリ名を要求されます。今回作成するのはNginx とLaravel(php-fpm) のイメージで、"grouscope-nginx"、"grouscope-laravel" とすることにしました。計2 つのリポジトリを作成します。リポジトリを作成したら次はAutomated Builds の設定を行ないます。リポジトリを作成したらリポジトリの画面へ移動して上部メニューの"Builds" を選択して"Configure Automated Builds" ボタンをクリックします。
 //image[chap05/0034_CreateRepositories][Automated Builds 設定画面][scale=1.0]
 
-するとBuild に関する設定画面に遷移します。我々が入力する項目としては"SOURCE REPOSITORY"、"AUTOTEST"、"REPOSITORY LINKS"、"BUILD RULES" になります。その中でもBUILD RULES はDockerfile からイメージをビルドするための重要な情報になるので間違え無いように入力してください。内容を間違えてしまうと、たとえローカルのビルドに成功していたとしてもDocker Hub 上でのビルドに失敗してしまいます。今回a6scloud にて作成した"grouscope-nginx" リポジトリについては図のようになります。今回はa6scloud/grouscope-backend GitHub リポジトリのmaster ブランチとtesting ブランチにてpush を検知すると/docker/nginx/Dockerfile ファイルを使ってgrouscope-nginx イメージのビルドが走るように設定をしました。これと同様に"grouscope-laravel" イメージのビルド設定も行うようにしてください(図5.18)。
+するとBuild に関する設定画面に遷移します。我々が入力する項目としては"SOURCE REPOSITORY"、"AUTOTEST"、"REPOSITORY LINKS"、"BUILD RULES" になります。その中でもBUILD RULES はDockerfile からイメージをビルドするための重要な情報になるので間違え無いように入力してください。内容を間違えてしまうと、たとえローカルのビルドに成功していたとしてもDocker Hub 上でのビルドに失敗してしまいます。今回a6scloud にて作成した"grouscope-nginx" リポジトリについては図のようになります。今回はa6scloud/grouscope-backend GitHub リポジトリのmaster ブランチとtesting ブランチにてpush を検知すると/docker/nginx/Dockerfile ファイルを使ってgrouscope-nginx イメージのビルドが走るように設定をしました。これと同様に"grouscope-laravel" イメージのビルド設定も行うようにしてください。
 
 //image[chap05/0035_ConfigureAutomatedBuilds][Nginx イメージのAutomatedBuilds の設定画面][scale=1.0]
 
