@@ -651,7 +651,7 @@ Organization を作成したら次はリポジトリを作成しましょう。�
 ここで"Create Repository" をクリックしてリポジトリを作成します。すると"a6scloud" というプレフィクスに続くリポジトリ名を要求されます。今回作成するのはNginx とLaravel(php-fpm) のイメージで、"grouscope-nginx"、"grouscope-laravel" とすることにしました。計2 つのリポジトリを作成します。リポジトリを作成したら次はAutomated Builds の設定を行ないます。リポジトリを作成したらリポジトリの画面へ移動して上部メニューの"Builds" を選択して"Configure Automated Builds" ボタンをクリックします。
 //image[chap05/0034_CreateRepositories][リポジトリ作成画面][scale=1.0]
 
-するとBuild に関する設定画面に遷移します。我々が入力する項目としては"SOURCE REPOSITORY"、"AUTOTEST"、"REPOSITORY LINKS"、"BUILD RULES" になります。その中でもBUILD RULES はDockerfile からイメージをビルドするための重要な情報になるので間違え無いように入力してください。内容を間違えてしまうと、たとえローカルのビルドに成功していたとしてもDocker Hub 上でのビルドに失敗する原因になりかねません。今回a6scloud にて作成した"grouscope-nginx" リポジトリについては図のようになります。今回はa6scloud/grouscope-backend GitHub リポジトリのmaster ブランチとtesting ブランチにてpush を検知すると/docker/nginx/Dockerfile ファイルを使ってgrouscope-nginx イメージのビルドが走るように設定をしました。これと同様に"grouscope-laravel" イメージのビルド設定も行うようにしてください(図6.18)。
+するとBuild に関する設定画面に遷移します。我々が入力する項目としては"SOURCE REPOSITORY"、"AUTOTEST"、"REPOSITORY LINKS"、"BUILD RULES" になります。その中でもBUILD RULES はDockerfile からイメージをビルドするための重要な情報になるので間違え無いように入力してください。内容を間違えてしまうと、たとえローカルのビルドに成功していたとしてもDocker Hub 上でのビルドに失敗する原因になりかねません。今回a6scloud にて作成した"grouscope-nginx" リポジトリについては図のようになります。今回はa6scloud/grouscope-backend GitHub リポジトリのmaster ブランチとtesting ブランチにてpush を検知すると/docker/nginx/Dockerfile ファイルを使ってgrouscope-nginx イメージのビルドが走るように設定をしました。これと同様に"grouscope-laravel" イメージのビルド設定も行うようにしてください(図5.18)。
 
 //image[chap05/0035_ConfigureAutomatedBuilds][Nginx イメージのAutomatedBuilds の設定画面][scale=1.0]
 
@@ -759,7 +759,17 @@ grouscope_nginx、grouscope_laravel、grouscope_mysql コンテナが起動し�
 
 == デプロイ
 開発環境も決まりフレームワークも決まり、アプリケーションの開発も進み、動くアプリケーションでき始めたころでした。その頃に出てきた話題が「デプロイ環境はどこにするか」ということでした。
-当時デプロイ環境として注目していたのは、IaaS としてAWS のEC2(Elastic Compute Cloud)やGCP のGCE(Compoute Engine)、PaaS として話題になっていたHeroku がありました。一方で古参な人間としてはLinux とネットワーク環境が用意され自分でサーバ構築するVPS(Virtual Private Server)や、過去のPC を再利用して自宅サーバを建てたりでも良いと考えていました。最終的にはまだ決まっていませんが、ここではデプロイ環境について色々試してみた軌跡について語っていきたいと思います。
+当時デプロイ環境として注目していたのは、IaaS としてAWS のEC2(Elastic Compute Cloud)やGCP のGCE(Compoute Engine)、PaaS として話題になっていたHeroku がありました。一方で古参な人間としてはLinux とネットワーク環境が用意され自分でサーバ構築するVPS(Virtual Private Server)や、過去のPC を再利用して自宅サーバを建てたりでも良いと考えていました。
+
+最終的にはまだ決まっていませんが、ここでは今までで試してみたAWS EC2、Heroku、自宅サーバでの環境構築とデプロイついて語っていきたいと思います。
+
+ * AWS EC2
+ ** https://aws.amazon.com/ec2/
+ ** https://docs.aws.amazon.com/ec2/
+
+ * Heroku
+ ** https://heroku.com/
+ ** https://devcenter.heroku.com/
 
 === AWS を使ってみた
 パブリッククラウドが最近非常に流行っています。IaaS なAWS EC2 やGCP GCE といったスモールスタートが可能でコストも削減でき、インスタンス数も短時間で増減できるという柔軟性が企業や個人開発、スタートアップ等が検証環境から本番環境としてもとして利用されています。その中でもAWS は世界でもっとも使われているクラウドのひとつでAWS を知らないという技術者はほとんどいなくなってきている状態です。ここではAWS のIaaS なサービスEC2 を使ってアプリケーションをデプロイしてみました。
