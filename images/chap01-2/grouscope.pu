@@ -1,0 +1,45 @@
+@startuml EntityRelationship
+
+package "database(MySQL)" as target_system <<Database>> {
+
+    entity "ANALSIS_RESULTS" as results {
+        + ID [PK]
+        --
+        ANALYSIS_START_DATE
+        ANALYSIS_END_DATE
+        ANALYSIS_WORD
+        STATUS
+        TWEET_COUNT
+        FAVORITE_COUNT
+        RETWEET_COUNT
+        URL
+        USER_COUNT
+        IMAGE
+        INSERT_DATE
+        UPDATE_DATE
+        DELETE_FLAG
+       }
+
+    entity "TWEETS" as tweets {
+        + ID [PK]
+        --
+        # ANALSIS_RESULT_ID [FK]
+        --
+        USER_NAME
+        USER_ACCOUNT
+        TEXT
+        RETWEET_COUNT
+        FAVORITE_COUNT
+        CREATED_AT
+        INSERT_DATE
+        NICE_COUNT
+        INSERT_DATA
+        UPDATE_DATE
+        DELETE_FLAG
+    }
+
+}
+
+results --right--o{ tweets
+
+@enduml
