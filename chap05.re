@@ -59,20 +59,20 @@ $ docker run hello-world
 
 //image[chap05/0001_DockerImageHelloWorld][引用 hello-world Docker イメージ(https://hub.docker.com/_/hello-world)][scale=1.0]
 
-このようにDocker Hub でイメージが管理されていることで我々はインターネットに繋がっていれば簡単にイメージをpull してきてコンテナを起動することができるようになっているのです。Docker Hub でイメージを管理すればイメージ登録後、イメージ名を伝えることで他メンバにそのイメージをpull してもらいコンテナを起動することができるようになるのです。
+このようにDocker Hub でイメージが管理されていることで我々はインターネットに繋がっていれば簡単にイメージをpull してきてコンテナを起動することができるようになっているのです。Docker Hub でイメージを管理すればイメージ登録後、その名前を他メンバに伝えることでそれをpull することができるようになり、コンテナを起動することができるようになるのです。
 
 一方でDocker イメージを公開したくない場合はDocker Registry で独自のリポジトリを建てる方法やDockerfile を配布する方法、docker save とdocker load を使った方法を利用するのもありだと思います@<fn>{chenv_01}。
 //footnote[chenv_01][2019年8月現在、Docker Hub の無料プランでも1つまでならプライベートリポジトリは作成可能です。有料アカウントであれば更に多くのプライベートリポジトリ作成することもできます。詳細はhttps://hub.docker.com/pricing]
 
 === 環境のリストアが簡単で早い
-2つ目のDocker を利用する理由としてはDocker イメージのスナップショットの性質を利用した環境のリストアが簡単で早い点です。この性質は色々なスキルセットを持つメンバが利用する環境としてとても大きな利点があります。例えばとあるメンバが開発中のプログラムに対して誤った改修を入れたりチャレンジングな設定変更をしてデータや環境を破損してしまったとしましょう。自分のマシン上にNginx やMySQL サーバを直接インストールしていた場合はサーバの再インストールであったりエラー箇所を追跡して正しく動くように戻したり、バックアップを事前にとっておきそれを使ってリストアする必要があるでしょう。またVM を使っていた場合はディスクイメージをバックアップとして取得しておき、そのディスクイメージをもう一度手元にコピーし直して再起動することで復旧できるかもしれませんが、ディスクイメージはたいてい数GB 〜 数十GB になることもざらにあり結構コストが高かったりします。一方Docker ではコストの高いコピー処理もなく「コンテナを削除することで状態をリストアする」という異なるアプローチで環境をリストアすることができるのです。
+2つ目のDocker を利用する理由としてはDocker イメージのスナップショットの性質を利用した環境のリストアが簡単で早い点です。この性質は色々なスキルセットを持つメンバが利用する環境としてとても大きな利点があります。例えばとあるメンバが開発中のプログラムに対して誤った改修を入れたり、チャレンジングな設定変更をしてデータや環境を破損してしまったとしましょう。自分のマシン上にNginx やMySQL サーバを直接インストールしていた場合はサーバの再インストールであったりエラー箇所を追跡して正しく動くように戻したり、バックアップを事前にとっておきそれを使ってリストアする必要があるでしょう。またVM を使っていた場合はディスクイメージをバックアップとして取得しておき、そのディスクイメージをもう一度手元にコピーし直して再起動することで復旧できるでしょう。しかしディスクイメージはたいてい数GB 〜 数十GB になることもざらにあり、コピー時のDisk IO の負荷が上がり時間がかかるなど結構コストが高かったりします。一方Docker ではそのコストの高いコピー処理もなく「コンテナを削除することで状態をリストアする」という異なるアプローチで環境をリストアすることができるのです。
 
 「コンテナを削除することで状態をリストアする」とはどういう意味なのでしょうか？それを知るにはDocker のイメージとコンテナの違いを理解する必要があります。一言で例えていうならばDocker イメージは読み取り専用でDocker コンテナは読み書き両方できるオブジェクトになります。コンテナを起動するとアプリケーションの実行ファイルのような更新が発生しない読み取り・アクセスのみで良いファイルやデータについてはイメージから読み取られ、アプリケーションによってファイルが作成されたり更新されたりするときはコンテナ内にそれらを複製して持ってきてコンテナ内の情報のみ変更するようになっているのです。結果としてファイルやデータの作成や変更はコンテナ上でのみ起こっていることで、イメージの状態は全く変わらないことになります。そのためユーザーは状態を元に戻したいと思ったら動いていたコンテナを削除してもう一度イメージからコンテナを起動し直せばよく、バックアップから大量の情報をコピーしてくるといったコストのかかることはしなくて済むようになっているのです。
 
 //image[chap05/0001_FigureOfImageAndContainer][Docker 環境のリストアイメージ][scale=1.0]
 
 ==== Docker のイメージとコンテナの性質を体験してみる
-Docker イメージとコンテナの違いを実際にコマンドを打って体験してみることにしましょう。まずは次のようにdocker run コマンドを実行してAlpine Linux コンテナを起動します。以下のコマンドはAlpine Linux イメージが無い状態から実行していることを想定しています。
+Docker イメージとコンテナの違いを実際にコマンドを打って体験してみることにしましょう。まずは次のようにdocker run コマンドを実行してAlpine Linux コンテナを起動します。次のコマンドはAlpine Linux イメージが無い状態から実行していることを想定しています。
 
 //cmd[docker run でAlpine Linux(紙面の都合上一部変更)]{
 $ docker run -ti alpine sh
@@ -162,10 +162,10 @@ cat: can't open '/var/log/yourapp.log': No such file or directory
 閑話休題、Docker を使うことが決まったので次はバックエンドのWeb アプリケーションフレームワークを決める話題になりました。その時Toki さんが「Laravel@<fn>{chenv_01_laravel} 使いたい！」と提案してくれました。普段PHP を使ったことがない私でも聞いたことはあり、当時会議に参加していたメンバも全員知っており異論無しですんなりと決まりました。
 //footnote[chenv_01_laravel][https://laravel.com/]
 
-Laravel はPHP で動くフルスタックなフレームワークでルーティングやコントローラ、ビュー、ORM も含んでいて且つAWS のS3 をストレージとして使うことを前提としたオプションも含まれていたりと至れり尽くせりなフレームワークです。今回はそのLaravel をフロントエンドのVue.js で組まれたプログラムにJSON で結果を返すREST 構成とすることに決まりました。もちろんLaravel にはAPI サーバの機能もあるためそのあたりの実装についても簡単に実装できるようになっています。
+Laravel はPHP で動くフルスタックなフレームワークでルーティングやコントローラ、ビュー、ORM も含んでいて且つAWS のS3 をストレージとして使うことを前提としたオプションも含まれていたりと至れり尽くせりなフレームワークです。今回はそのLaravel をフロントエンドのVue.js で組まれたプログラムにJSON で結果を返すREST 構成とすることに決まりました。もちろんLaravel にはAPI サーバの機能もあるためそのあたりの実装についても簡単にできるようになっています。
 
 == Laradock との出会い
-フレームワークとしてLaravel を使うことが決定したので次はその環境をどのようにしてDocker で準備するかという流れになりました。自力でDockerfile を作成してイメージをビルドするのも良いですが、隙間時間に進めていくプロジェクトであったことを考慮して、できるだけコストのかかる方法は回避しようと考えていました。またLaravel は有名であることもあり、既に完成度の高いLaravel のDocker イメージを作成して配布している人がいるはずだと漠然と考えていました。それをメンバに伝えた所、メンバ全員でDocker イメージを探す作業に入っていきました。するとToki さんがまたやらかしてくれました。「Laradock@<fn>{chenv_01_laradock} がありますよ！」。
+フレームワークとしてLaravel を使うことが決定したので次はその環境をどのようにしてDocker で準備するかという流れになりました。自力でDockerfile を作成してイメージをビルドするのも良いですが、隙間時間に進めていくプロジェクトであったことを考慮して、できるだけコストのかかる方法は回避しようと考えていました。またLaravel は有名であることもあり、既に完成度の高いLaravel のDocker イメージを作成して配布している人がいるはずだと漠然と考えていました。それをメンバに伝えた所、メンバ全員でDocker イメージを探す作業に入っていきました。するとToki さんがまた提案してくれました。「Laradock@<fn>{chenv_01_laradock} がありますよ！」。
 //footnote[chenv_01_laradock][https://laradock.io/]
 
 Laradock はDocker 環境上で実行できるPHP 開発環境です。PHP 環境以外にも様々なDocker イメージをサポートしており、PHP アプリケーションを開発するための至れり尽くせりなDocker 資材のセットとなっています。Laradock を使えばLaravel 環境が手軽に自分の手元に準備できるのは当然のこと、やはりコミュニティが活発でDockerfile やドキュメントのメンテナンスもしっかり行き届いているので、今後使い続けるのにも良いチョイスでした。LEMP @<fn>{chenv_02}構成に加えてRedis、Mongo DB、メールサーバ等のイメージも必要に応じて準備できるようになっており、今後のことも考えると当時選ばない理由はありませんでした。
@@ -176,12 +176,19 @@ Laradock を使うと簡単にPHP 及びLaravel 環境を準備できます。�
 //footnote[chenv_03]["Do not run Composer as root/super user! See https://getcomposer.org/root for details" といった警告が出るかもしれませんが今回は無視して進むことにします]
 
 //cmd{
+$ # 仮の作業ディレクトリを作成
 $ mkdir -p laravel/laravel
 $ cd laravel
+
+$ # 公式からLaradock リポジトリをclone
 $ git clone --depth 1 https://github.com/laradock/laradock.git
 $ cd laradock
+
+$ # .env ファイルを作成
 $ cp env-example .env
 $ sed -i -e 's|APP_CODE_PATH_HOST=.*|APP_CODE_PATH_HOST=../laravel|' .env
+
+$ # コンテナの起動とLaravel 環境の構築
 $ docker-compose up -d nginx
 $ docker-compose exec --user laradock workspace bash -c "cd /var/www && composer create-project laravel/laravel ."
 $ docker-compose exec php-fpm chown -R www-data:www-data .
@@ -214,7 +221,7 @@ $ docker-compose exec php-fpm chown -R www-data:www-data .
 
 //image[chap05/0004_LaravelHelloWorld][Laravel のHello World(https://github.com/niwasawa/php-laravel-hello-world.git)][scale=1.0]
 
-図のように画面が表示されれば成功です。既存のLaravel アプリケーションも簡単にLaradock へ移行できるようになっているのです。決して上から目線ではないですが、私のようにLinux 経験が長い人からすると自分で環境構築するほうが後々カスタマイズ性もあって便利では無いかと考えることもあるかもしれませんが、寄せ集めのメンバであったりスタートアップで限られた資源で開発をしている場合は有識なサーバサイドエンジニアが身近にいなかったりするかもしれません。そういった場合にまずはLaradock を使って開発環境を用意してみたい、という時にLaradock は非常に便利です。またドキュメントをじっくり読んでみるとわかるのですがLaradock の仕様や文化を理解するイニシャルコストはありますが、アプリケーション開発者のあらゆるニーズに答えられるようになっているのでサーバサイドの経験が長い人にとっても時間短縮のために利用したりLaradock の複雑なDocker イメージの組み合わせ(例えばMongoDB との接続やRedis との接続など)をDockerfile やdocker-compose.yaml を見て勉強したり、複雑な構成のテスト環境を手早く準備するのに役立つことでしょう。
+図のように画面が表示されれば成功です。既存のLaravel アプリケーションも簡単にLaradock へ移行できるようになっているのです。決して上から目線ではないですが、私のようにLinux 経験が長い人からすると自分で環境構築するほうが後々カスタマイズ性もあって便利ではないかと考えることもあるかもしれませんが、経験の浅いメンバだけであったりスタートアップで限られた資源で開発をしている場合は有識なサーバサイドエンジニアが身近にいなかったりするかもしれません。そういった場合に即席で開発環境を用意してみたい、という時にLaradock は非常に便利です。またドキュメントをじっくり読んでみるとわかるのですがLaradock の仕様や文化を理解するイニシャルコストはありますが、アプリケーション開発者のあらゆるニーズに答えられるようになっています。なのでサーバサイドの経験が長い人にとっても時間短縮のために利用したりLaradock の複雑なDocker イメージの組み合わせ(例えばMongoDB との接続やRedis との接続など)をDockerfile やdocker-compose.yaml を見て勉強したり、複雑な構成のテスト環境を手早く準備するのに役立つことでしょう。
 
 === Laradock の構成図
 Laradock を起動させたところで、一旦docker ps コマンドを実行してコンテナを見てみましょう。するとLaradock が複数のコンテナから構成されている事に気付く事でしょう。
@@ -239,7 +246,7 @@ a9cdaae0a76a  l_workspace  ...      .  Up n sec  ...    laradock_workspace_1
 またworkspace というLaravel アプリケーションとは一見関係なさそうなコンテナが存在します。これはphp-fpm コンテナの作業スペースとなるコンテナで、このコンテナに乗り込むことで別コンテナとして起動するphp-fpm のファイルリソース類に対して透過的にアクセスできるようになっています。またこのコンテナにはcomposer をはじめとしたツールセットが盛り込まれており、composer による新規Laravel プロジェクトの作成やartisan コマンドによるLaravel ユーティリティの利用、xDebug (ビルド時のオプションで指定が必要)を使ったデバッグ実行といったことができるようになっています。このようにLaradock では数回のコマンド実行で本番環境さながらなネットワークを構築して開発に集中できるような環境が整った作業スペースまでをも提供してくれる、配慮の尽くされたリソースセットとなっているのです。
 
 == 依存性管理
-package.json、composer.json、pom.xml。NodejsやPHP、Java などのプロジェクト開発でこういった名前のファイルを見た事がある人も多いかもしれません。これらのファイルはプロジェクトの名前や設定情報、ビルドやテストするための命令を管理する一方でプロジェクトが必要としている依存モジュールについても管理しています。grouscope にもそのような依存性管理の方法が必要でした。
+package.json、composer.json、pom.xml。Node.jsやPHP、Java などのプロジェクト開発でこういった名前のファイルを見た事がある人も多いかもしれません。これらのファイルはプロジェクトの名前や設定情報、ビルドやテストするための命令を管理する一方でプロジェクトが必要としている依存モジュールについても管理しています。grouscope にもそのような依存性管理の方法が必要でした。
 
 grouscope は複数のGit で管理されているプログラムに依存しており、具体的には以下のものがあります。
 
@@ -248,7 +255,7 @@ grouscope は複数のGit で管理されているプログラムに依存して
  * RictyDiminished@<fn>{chenv_03_url_of_rictydiminished}: word cloud 画像に埋め込む文字フォント
 //footnote[chenv_03_url_of_rictydiminished][https://github.com/edihbrandon/RictyDiminished]
 
-昨今はマイクロサービスという言葉が出てきて、個々に作成されたサービスやアプリケーションを部品として組み込んで1 つのサービスやアプリケーションとして成り立たせていくという開発の手法が話題になっています。grouscope のバックエンドアプリケーションもそれ単体では動かすことができず、ツイート内容を可視化するgrouscope-batch プロジェクト(内部でamueller氏の word_cloud@<fn>{chenv_03_git_word_cloud} を使用)と画像に文字を入れるためのフォントファイルRictyDiminished (edihbrandon 氏のリポジトリのもの@<fn>{chenv_03_git_ricty_diminished}を使用)を必要としていました。そしてLaravel アプリケーション実行環境としてLaradock も必要なものとして追加されました。このように必要な要素が多くなってくるとこれらをどのように管理していくかが課題になってきました。
+昨今はマイクロサービスという言葉が出てきて、個々に作成されたサービスやアプリケーションを部品として組み込んで1 つのサービスやアプリケーションとして成り立たせていくという開発の手法が話題になっています。grouscope のバックエンドアプリケーションもそれ単体では動かすことができず、ツイート内容を可視化するgrouscope-batch プロジェクト(内部でamueller氏の word_cloud@<fn>{chenv_03_git_word_cloud} を使用)と画像に文字を入れるためのフォントファイルRictyDiminished (edihbrandon 氏のリポジトリのもの@<fn>{chenv_03_git_ricty_diminished}を使用)を必要としていました。そしてLaravel アプリケーション実行環境としてLaradock も必要としていました。このように必要な要素が多くなってくるとこれらをどのように管理していくかが課題になってきました。
 //footnote[chenv_03_git_word_cloud][https://github.com/amueller/word_cloud]
 //footnote[chenv_03_git_ricty_diminished][https://github.com/edihbrandon/RictyDiminished]
 
@@ -257,7 +264,7 @@ grouscope リポジトリ作成したての頃はそれらの依存関係を管�
 
 //list[requirements.txt][requirements.txt]{
 https://github.com/laradock/laradock.git
-https://github.com/nsuzuki7713/a6s-cloud-batch.git
+https://github.com/a6s-cloud/a6s-cloud-batch.git
 https://github.com/edihbrandon/RictyDiminished.git
 //}
 
@@ -276,7 +283,7 @@ done < ./requirements.txt
 //image[chap05/0011_FigureOfDependentModules][依存関係の依存までダウンロードできない][scale=1.0]
 
 === 取得してくる依存モジュールのバージョンが安定していない
-多くの人から利用されている人気モジュールは世界中のユーザーから機能のリクエストがあったり仕様の改善やバグフィックスが頻繁に行われています。先程のスクリプトではパージョンタグやコミットを指定することなくgit のリポジトリをクローンしています。結果としてmaster ブランチの最新コミットを常にダウンロードしてくることになり、これではメンバによってアプリケーションをビルドする日時の違いによって成功したり失敗したりと安定しない状態となってしまう可能性があります。
+多くの人から利用されている人気モジュールは世界中のユーザーから機能のリクエストがあったり仕様の改善やバグフィックスが頻繁に行われています。先程のスクリプトではパージョンタグやコミットハッシュ値を指定することなくgit のリポジトリをクローンしています。結果として常にmaster ブランチの最新コミットをダウンロードしてくることになり、これではメンバによってアプリケーションをビルドする日時の違いによって成功したり失敗したりと安定しない状態となってしまう可能性があります。
 
 //image[chap05/0012_FigureOfVersionOfModules][依存関係のバージョンまで管理できていない。ビルド日時によって成功・失敗が左右される][scale=0.9]
 
@@ -296,10 +303,10 @@ $ # 事前にpull(fetch やmerge) を実行しておく
 $ git submodule update --init --recursive
 //}
 
-これで他メンバにも依存関係のgit リポジトリが手元に落とされるようになります。そしてgrouscope-batch リポジトリも依存するsubmodule がある場合は、このコマンドを実行することで再帰的にその依存モジュールも落とされるようになっています。またsubmodule として落とされたgrouscope-batch ですが参照しているコミットはgit submodule add コマンドを実行した時点のmaster ブランチの最新となっており、この参照先コミットは固定です。すなわちgrouscope-batch の開発が今後進んで新しいコミットがされようとも、バージョンアップして仕様が大幅改変されようともsubmodule として取得されるgrouscope-batch のコミットは同じで中身が変わりません。そのため依存モジュールのアップデートによる想定外のエラーや障害が発生するといったリスクを抑えることができるようになっています。またここでは説明を割愛しますが、特定のバージョン(tag)やコミットに対しても参照を設定することができるので、やはり独自のスクリプトで管理するよりもgit submodule として管理するのが賢明でしょう。
+これで他メンバにも依存関係のgit リポジトリが手元に落とされるようになります。そしてgrouscope-batch リポジトリも依存するsubmodule がある場合は、このコマンドを実行することで再帰的にその依存モジュールも落とされるようになっています。またsubmodule として落とされたgrouscope-batch ですが参照しているコミットはgit submodule add コマンドを実行した時点のmaster ブランチの最新となっており、この参照先コミットは固定です。すなわちgrouscope-batch の開発が今後進んで新しいコミットがされようとも、バージョンアップして仕様が大幅改変されようともsubmodule として取得されるgrouscope-batch のコミットは同じで中身が変わりません。そのため依存モジュールのアップデートによる想定外のエラーや障害が発生するといったリスクを抑えることができるようになっています。またここでは説明を割愛しますが、パージョンタグやコミットハッシュ値やブランチ等に対して参照を設定することができるので、やはり独自のスクリプトで管理するよりもgit submodule として管理するのが賢明でしょう。
 
 == Laravel 環境のカスタマイズ
-ツイート内容を集計して画像を作成するgrouzcope-batch では内部でwordcloud を使用しているためPython の環境を整える必要がありました。Laradock はPHP やLaravel に特化した環境なのでPython の環境は我々で考えて構築する必要がありました。ただ幸いにもLaradock はDebian 系のLinux ディストリビューションを採用@<fn>{chenv_04}しているので環境構築のための情報も多く、幾つかのコマンドを実行すれば環境が構築できることがわかりました。またgrouscope ではMySQL 8 を使っていましたが、認証方式のデフォルトが変更されていてLaravel からの認証が通らないなどの事態が発生していました。それらの問題をひとつひとつ解消するために私がとった行動はこれらをbash スクリプトで全て解決しようという試みでした。そしてできたbash スクリプトの一部が下記のようなスクリプトです。
+ツイート内容を集計して画像を作成するgrouscope-batch では内部でwordcloud を使用しているためPython の環境を整える必要がありました。Laradock はPHP やLaravel に特化した環境なのでPython の環境は我々で考えて構築する必要がありました。ただ幸いにもLaradock はDebian 系のLinux ディストリビューションを採用@<fn>{chenv_04}しているので環境構築のための情報も多く、幾つかのコマンドを実行すれば環境が構築できることがわかりました。またgrouscope ではMySQL 8 を使っていましたが、認証方式のデフォルトが変更されていてLaravel からの認証が通らないなどの事態が発生していました。それらの問題をひとつひとつ解消するために私がとった行動はこれらをbash スクリプトで全て解決しようという試みでした。そしてできたbash スクリプトの一部が下記のようなものです。
 //footnote[chenv_04][Docker ファイルを追っていくとphp-fpm をベースにしており更に追っていくとDebian を使っている事がわかる]
 
 //emlist[docker のMySQL コンテナに無理やりSQL を送っているbuild スクリプト(ゲシュタルトの崩壊)]{
@@ -342,7 +349,7 @@ Call tree:
 Exiting with status 1
 //}
 
-これはMySQL のコンテナに対してmysql コマンドでSQL を流してDB のデータを初期化処理の部分のエラー出力です。一見するとMySQL コンテナが見つからないという内容のエラーに見えます。しかし私が作成したビルドスクリプトでは"mysql_1" という名前のコンテナを指定している箇所は無いため、そのコンテナが見つからないというエラーメッセージは肩透かしをされた思いでした。スクリプトの中身というよりは何か想定外の環境によるエラーと推測していました。そして一方で同じMac を使っているなおとさんのMac 環境では成功しているという報告をいただいていてToki さんのMac 環境では失敗しという状況でした。そこで色々お話を聞いたところ、Toki さんがやっている他の開発プロジェクトでもLaradock を使っているという情報を得る事ができました。
+これはMySQL のコンテナに対してmysql コマンドでSQL を流してDB のデータを初期化している処理の部分のエラーです。一見するとMySQL コンテナが見つからないという内容のエラーに見えます。しかし私が作成したビルドスクリプトでは"mysql_1" という名前のコンテナを指定している箇所は無いため、そのコンテナが見つからないというエラーメッセージは肩透かしをされた思いでした。スクリプトの中身というよりは何か想定外の環境によるエラーと推測していました。そして一方で同じMac を使っているなおとさんのMac 環境では成功しているという報告をいただいていてToki さんのMac 環境では失敗しという状況でした。そこで色々お話を聞いたところ、Toki さんがやっている他の開発プロジェクトでもLaradock を使っているという情報を得る事ができました。その中で気になったのがToki さんが別にやっているプロジェクトのLaradock でもMySQL を使用しており、そのLaradock が実現しているMySQL のデータ永続化を実現するために取っていた方式でした。
 
 === Docker を使った場合の永続的なデータの取り扱い
 Docker ではコンテナ上にあるデータはコンテナを削除してしまうと消えてしまいます。Docker を使う、特に開発環境として利用されるシーンではコンテナが削除されること(コンテナがいつまでも残っているとは限らないこと)を前提にしている事が多いため、もしコンテナ上で更新されたり削除されたりするデータを永続的に保持しておきたい場合は工夫が必要です。その工夫の一つとして、Docker ホスト側のディレクトリをDocker コンテナ側にマウントする方法があります。
@@ -351,7 +358,7 @@ Docker ではコンテナ上にあるデータはコンテナを削除してし�
 
 ホスト側のディレクトリをコンテナ側のディレクトリにマウントする事でデータの書き込みはコンテナ上のファイルではなくてホスト側のファイルに書き込まれるようになります。この状態でコンテナを削除すれば失われる情報はコンテナ上の情報だけなので、マウントしてホスト側に書き込まれたファイルは残り続けることになります。
 
-この性質を利用して例えばMySQL のプログラムのバイナリ(実行ファイル)はコンテナ上に置いておき、DB のデータファイル本体はホスト側にマウントしたディレクトリに置くことで更新されたDB データはコンテナを削除しても残しておく事ができるようになります。また新規コンテナを立ち上げる時も同じディレクトリをマウントするようにしていれば、過去のコンテナで更新されたデータを引き続き利用する事ができるようになるのです。
+この性質を利用して例えばMySQL のプログラムのバイナリ(実行ファイル)はコンテナ上に置いておき、DB のデータファイル本体はホスト側にマウントしたディレクトリに置くことで更新されたDB データはコンテナを削除しても残しておく事ができます。また新規コンテナを立ち上げる時も同じディレクトリをマウントするようにしていれば、過去のコンテナで更新されたデータを引き続き利用する事ができるようになります。
 
 === Laradock ではどうなっていたか
 Laradock は標準でDocker ホスト側の~/.laradock/data ディレクトリをMySQL のデータディレクトリとしてコンテナ側でマウントしてデータを永続化するようになっています。これは時と場合によっては問題を引き起こす可能性があります。
@@ -561,11 +568,11 @@ server {
 //emlist[(1)root ディレクティブ(ドキュメントルートの変更)]{
 root   /var/www/html/a6s-cloud/public;
 //}
-注意点としては、このnginx のコンテナ本体にはコンテンツは置かないということです。ドキュメントルートを設定するのは後ほど出てくる
+注意点としては、このnginx のコンテナ本体にはコンテンツは置かないということです。それなのにドキュメントルートを設定するのは、後に出てくるfastcgi_param 変数を構築するためです。
 //emlist[(3)fastcgi パラメータSCRIPT_FILENAME の組み立て]{
 fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
 //}
-の部分でLaravel コンテナに対して、SCRIPT_FILENAME パラメータとして渡す値を組み立てるためにあります。逆にnginx のドキュメントルートにコンテンツは置かないようにしてください。try_files ディレクティブがindex.php パスを付与しなくなり想定しない動作となってしまいます。最終的にphp-fpm コンテナに対してFast CGI パラメータSCRIPT_FILENAME が渡されるようになり、想定される値は先程設定したroot ディレクティブの値と組み合わされ"/var/www/html/a6s-cloud/public/index.php" となります。この後作成するphp-fpm コンテナではそのディレクトリ(/var/www/html/a6s-cloud/public)にLaravel のコンテンツ及びindex.php を置くようにしてください。あと最後にリバースプロキシ先としてLaravel コンテナ(php-fpm のエイリアス: laravel)を指定することを忘れないようにしてください。
+このfastcgi_param 変数はLaravel コンテナに対して、SCRIPT_FILENAME パラメータとして渡す値を組み立てるためにあります。逆にnginx のドキュメントルートにコンテンツは置かないようにしてください。try_files ディレクティブがindex.php パスを付与しなくなり想定しない動作となってしまいます。最終的にphp-fpm コンテナに対してFast CGI パラメータSCRIPT_FILENAME が渡されるようになり、想定される値は先程設定したroot ディレクティブの値と組み合わされ"/var/www/html/a6s-cloud/public/index.php" となります。この後作成するphp-fpm コンテナではそのディレクトリ(/var/www/html/a6s-cloud/public)にLaravel のコンテンツ及びindex.php を置くようにしてください。あと最後にリバースプロキシ先としてLaravel コンテナ(php-fpm のエイリアス: laravel)を指定することを忘れないようにしてください。
 //emlist[(2)リバースプロキシパスの設定]{
 fastcgi_pass laravel:9000;
 //}
@@ -591,7 +598,7 @@ COPY wait_until_mysql_started.sh /opt/wait_until_mysql_started.sh
 CMD ["/opt/grouscope_entrypoint.sh"]
 //}
 
-Laravel イメージはphp-fpm イメージをベースに作成します。ベースイメージのタグを"php:7.3-fpm" ではなく"php:7.3-fpm-stretch" としているのは2019年07月にあげられたPHP のgd モジュールインストール時にでる問題のためです@<fn>{chenv_11_php_fpm_gd_module_issue}。Dockerfile の記載内容としては、ベースイメージによってPHP の環境はだいたい揃っているので、あとは好みのPHP エクステンションの追加及びgrouscope が依存するPython 製バッチを実行するためにPython をインストールしています。そしてコンテナが起動した時に実行されるentrypoint スクリプトも準備し、そのなかでcomposer install を実行してアプリケーションが依存するパッケージ類をインストールするようになっていますしています。PHP 以外の依存としてgit submodule とPython のパッケージがありますが、それはcomposer.json のpost-install-cmd でcomposer install が実行された後に続けてインストールされるようにコマンドを組み込んでいます。
+Laravel イメージはphp-fpm イメージをベースに作成します。ベースイメージのタグを"php:7.3-fpm" ではなく"php:7.3-fpm-stretch" としているのは2019年07月にあげられたPHP のgd モジュールインストール時にでる問題のためです@<fn>{chenv_11_php_fpm_gd_module_issue}。Dockerfile の記載内容としては、ベースイメージによってPHP の環境はだいたい揃っているので、あとは好みのPHP エクステンションの追加及びgrouscope が依存するPython 製バッチを実行するためにPython をインストールしています。そしてコンテナが起動した時に実行されるentrypoint スクリプトも準備し、そのなかでcomposer install を実行してアプリケーションが依存するパッケージ類をインストールするようになっています。PHP 以外の依存としてgit submodule とPython のパッケージがありますが、それはcomposer.json のpost-install-cmd でcomposer install が実行された後に続けてインストールされるようにコマンドを組み込んでいます。
 //footnote[chenv_11_php_fpm_gd_module_issue][https://github.com/docker-library/php/issues/865]
 
 //emlist[composer.json の一部抜粋(紙面の都合上一部改変)]{
@@ -974,11 +981,11 @@ $ heroku config:set DB_PASSWORD=yyyyyyyyyyyyyyyy
 $ heroku config:set DB_PORT=3306
 $ heroku config:set DB_DATABASE=zzzzzzzzzzzzzzzz
 
-$ # ついでにTwitter API KEY も設定します
-$ heroku config:set CONSUMER_KEY="xxxxxxxxxxxxxxxxxxxxxxxxx"
-$ heroku config:set CONSUMER_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-$ heroku config:set ACCESS_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-$ heroku config:set ACCESS_TOKEN_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+$ # Twitter API KEY も設定します
+$ heroku config:set CONSUMER_KEY="xxxx......"
+$ heroku config:set CONSUMER_SECRET="xxxx......"
+$ heroku config:set ACCESS_TOKEN="xxxx......"
+$ heroku config:set ACCESS_TOKEN_SECRET="xxxx......"
 //}
 これでLaravel アプリケーションが入っているDyno からMySQL アドオンのDB にアクセスできるようになります。それでは待ちに待ったデプロイを実施しましょう。デプロイは前に説明したとおりHeorku のGit リポジトリに資材をpush することで始まりますが、Laravel アプリケーションの構成としてcomposer.json がroot のディレクトリに来るようにしなければいけません。今回我々が作成したアプリケーションはa6s-cloud ディレクトリの下にcomposer.json がありますので以下のようにgit subtree コマンドを使ってpush します@<fn>{heroku_deploy_push}。
 //footnote[heroku_deploy_push][composer.json がroot ディレクトリにあるのなら"git push heroku master" でOK]
