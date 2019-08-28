@@ -221,3 +221,5 @@ issueやpullrequestにも対応しているのでcloseしたらissueを閉じる
 直感的にガントチャートを作成できたので便利でした。
 
 //image[sec-ext1-6][ガントチャート][scale=1.0]
+
+//image[myuhu8][][scale=1.0]
