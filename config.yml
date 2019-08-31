@@ -26,7 +26,8 @@ language: ja
 # 読みを入れる例 booktitle: {name: "Re:VIEW EPUBサンプル", file-as: "リビューイーパブサンプル"}
 # （タイトルやサブタイトルが長い場合は、好みの箇所に改行を入れてください。）
 booktitle: |-
-  プライベートでのチーム開発のすすめ方
+  プライベートでの
+  チーム開発のすすめ方
 subtitle: |-
   
 
@@ -295,9 +296,9 @@ texdocumentclass: ["jsbook",
     #"uplatex,papersize,twoside,b5j,10pt,openright" # B5 10pt 右起こし
     #"uplatex,papersize,twoside,b5j,10pt,openany"   # B5 10pt 両起こし
     #"uplatex,papersize,twoside,a5j,9pt,openright"  # A5  9pt 右起こし
-    #"uplatex,papersize,twoside,a5j,9pt,openany"    # A5  9pt 両起こし
+    "uplatex,papersize,twoside,a5j,9pt,openany"    # A5  9pt 両起こし
     #"uplatex,papersize,oneside,a5j,10pt,openany"   # A5 10pt 両起こし（タブレット向け）
-    "uplatex,papersize,twoside,a5j,9pt,openright"
+    # "uplatex,papersize,twoside,a5j,9pt,openright"
 ]
 #
 # LaTeX用のコマンドを指定する

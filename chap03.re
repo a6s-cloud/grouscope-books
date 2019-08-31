@@ -222,4 +222,4 @@ issueやpullrequestにも対応しているのでcloseしたらissueを閉じる
 
 //image[sec-ext1-6][ガントチャート][scale=1.0]
 
-//image[myuhu8][][scale=1.0]
+//image[myuhu1][][scale=0.8]
