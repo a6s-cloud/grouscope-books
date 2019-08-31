@@ -4,7 +4,7 @@
 	中小SIer(2年7ヶ月) → Web系ベンチャー(10ヶ月) → フリーランスエンジニア(2018/10〜)。 人見知りです。特に3人以上だと話せなくなるタイプです。 Vue,Node.js,TypeScript。 #しがないラジオ (sp56a,b)@<br>{}
 
 : つとむ(@tsuna0x00)
-	Linuxとプログラミング大好きな人。プログラマ,Linux,Docker,Vim,Node.js,Java,C,C++,Python,Bash,自作PC etc.@<br>{}
+	Linuxとプログラミング大好きな人。普段は適度な(?)お酒を飲みながらお古になったPC で自宅サーバを構築したり、プログラミングしたりしています。@<br>{}
 
 : トキ(@tokidrill)
 	// FIXME: bio思い浮かばない. /@<br>{}
