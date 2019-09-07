@@ -138,4 +138,4 @@ JR 御徒町駅から徒歩3分程度、上野駅からでも数分程度で行�
  * Bar TIPTOP
  * https://tiptop.owst.jp/
 
-//image[myuhu3][][scale=0.7]
+//image[myuhu3][][scale=0.5]
